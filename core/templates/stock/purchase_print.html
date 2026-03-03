@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+{% load humanize %}
+{% load mbayar_tags %}
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nota Pembelian - {{ purchase.invoice_no }}</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #000;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            text-transform: uppercase;
+        }
+        .header h3 {
+            margin: 5px 0;
+            font-weight: normal;
+        }
+        .info-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 5px;
+        }
+        .info-label {
+            width: 120px;
+            font-weight: bold;
+        }
+        .info-value {
+            flex: 1;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th {
+            background: #8B1E2D;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-size: 12px;
+        }
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .total-row {
+            font-weight: bold;
+            background: #f8f9fa;
+        }
+        .total-row td {
+            border-top: 2px solid #000;
+            font-size: 14px;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            border-top: 1px dashed #999;
+            padding-top: 20px;
+        }
+        .signature {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature div {
+            text-align: center;
+            width: 200px;
+        }
+        .signature-line {
+            margin-top: 40px;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+        }
+        @media print {
+            body {
+                margin: 0;
+                padding: 15px;
+            }
+            .no-print {
+                display: none;
+            }
+            .info-section {
+                background: none;
+                border: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MBAYAR POS</h1>
+        <h3>NOTA PEMBELIAN STOK</h3>
+        <p>{{ purchase.invoice_no }}</p>
+    </div>
+
+    <div class="info-section">
+        <div class="info-row">
+            <div class="info-label">Tanggal</div>
+            <div class="info-value">: {{ purchase.date|date:"d/m/Y H:i" }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">No. Invoice</div>
+            <div class="info-value">: {{ purchase.invoice_no }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Supplier</div>
+            <div class="info-value">: {{ purchase.supplier.name|default:"-" }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Petugas</div>
+            <div class="info-value">: {{ purchase.created_by.username|default:"-" }}</div>
+        </div>
+        {% if purchase.notes %}
+        <div class="info-row">
+            <div class="info-label">Catatan</div>
+            <div class="info-value">: {{ purchase.notes }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Kode</th>
+                <th>Nama Barang</th>
+                <th class="text-center">Jumlah</th>
+                <th class="text-right">Harga/Unit</th>
+                <th class="text-right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in purchase.items.all %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.kode_barang.kode }}</td>
+                <td>{{ item.kode_barang.nama }}</td>
+                <td class="text-center">{{ item.jumlah|floatformat:1 }} {{ item.kode_barang.stockitem_set.first.unit|default:"" }}</td>
+                <td class="text-right">{{ item.harga_unit|rupiah }}</td>
+                <td class="text-right">{{ item.subtotal|rupiah }}</td>
+            </tr>
+            {% endfor %}
+            
+            <!-- Baris kosong untuk total -->
+            <tr class="total-row">
+                <td colspan="5" class="text-right"><strong>TOTAL</strong></td>
+                <td class="text-right"><strong>{{ purchase.total_amount|rupiah }}</strong></td>
+            </tr>
+            
+            <!-- Info cara hitung -->
+            <tr>
+                <td colspan="6" style="border: none; padding-top: 20px;">
+                    <small>
+                        <strong>Keterangan:</strong><br>
+                        {% for item in purchase.items.all %}
+                        • {{ item.kode_barang.nama }}: 
+                          {% if item.cara_hitung == 'bulk' %}
+                            BULK ({{ item.jumlah|floatformat:1 }} unit @ Rp {{ item.harga_unit|floatformat:0 }})
+                          {% else %}
+                            PIECE ({{ item.jumlah|floatformat:1 }} unit @ Rp {{ item.harga_unit|floatformat:0 }})
+                          {% endif %}
+                        <br>
+                        {% endfor %}
+                    </small>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="signature">
+        <div>
+            <div>Dibuat Oleh,</div>
+            <div class="signature-line">{{ purchase.created_by.get_full_name|default:purchase.created_by.username }}</div>
+            <div>{{ purchase.created_at|date:"d/m/Y H:i" }}</div>
+        </div>
+        <div>
+            <div>Mengetahui,</div>
+            <div class="signature-line">{{ purchase.supplier.contact|default:purchase.supplier.name }}</div>
+            <div>{{ purchase.supplier.phone|default:"-" }}</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Terima kasih atas kepercayaan Anda menggunakan Mbayar POS</p>
+        <p>Dicetak pada: {% now "d/m/Y H:i:s" %}</p>
+    </div>
+
+    <div class="no-print" style="text-align: center; margin-top: 30px;">
+        <button onclick="window.print()" style="padding: 10px 30px; background: #8B1E2D; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">
+            <i class="fas fa-print"></i> Cetak Nota
+        </button>
+        <button onclick="window.close()" style="padding: 10px 30px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; margin-left: 10px;">
+            <i class="fas fa-times"></i> Tutup
+        </button>
+    </div>
+
+    <script>
+        // Auto print saat halaman dibuka dengan parameter print=1
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('print') === '1') {
+                setTimeout(function() {
+                    window.print();
+                }, 500);
+            }
+        });
+    </script>
+</body>
+</html>

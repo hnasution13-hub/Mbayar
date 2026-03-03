@@ -1,0 +1,72 @@
+<!-- ==================================================
+     FILE: templates/user/user_list.html
+     FUNGSI: Halaman daftar user untuk manajemen pengguna
+     FITUR:
+       - Tabel daftar user dengan informasi username, nama, email, role, tanggal bergabung, status aktif
+       - Badge warna untuk role dan status
+       - Tombol aksi untuk mengubah role
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}Manajemen User - Mbayar POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Manajemen User</h2>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Nama</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Tanggal Bergabung</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.get_full_name|default:"-" }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if user.profile.role == 'administrator' %}bg-danger
+                                {% elif user.profile.role == 'supervisor' %}bg-warning
+                                {% else %}bg-info{% endif %}">
+                                {{ user.profile.get_role_display }}
+                            </span>
+                        </td>
+                        <td>{{ user.date_joined|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if user.is_active %}
+                                <span class="badge bg-success">Aktif</span>
+                            {% else %}
+                                <span class="badge bg-danger">Nonaktif</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'user_edit_role' user.id %}" class="btn btn-sm btn-warning">
+                                <i class="fas fa-edit"></i> Ubah Role
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

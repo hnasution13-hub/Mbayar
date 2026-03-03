@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}DEBUG - Purchase Add{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h3>DEBUG INFORMATION</h3>
+        </div>
+        <div class="card-body">
+            <h4>1. Data dari Views:</h4>
+            <table class="table table-bordered">
+                <tr>
+                    <th>Variable</th>
+                    <th>Ada?</th>
+                    <th>Jumlah</th>
+                    <th>Contoh Data</th>
+                </tr>
+                <tr>
+                    <td>suppliers</td>
+                    <td>{{ suppliers|yesno:"✅ ADA,❌ TIDAK ADA" }}</td>
+                    <td>{{ suppliers|length }}</td>
+                    <td>
+                        {% if suppliers %}
+                            {% for s in suppliers|slice:":3" %}
+                                {{ s.id }} - {{ s.name }}<br>
+                            {% endfor %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>items</td>
+                    <td>{{ items|yesno:"✅ ADA,❌ TIDAK ADA" }}</td>
+                    <td>{{ items|length }}</td>
+                    <td>
+                        {% if items %}
+                            {% for i in items|slice:":3" %}
+                                {{ i.id }} - {{ i.code }} - {{ i.name }}<br>
+                            {% endfor %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+
+            <h4 class="mt-4">2. User Info:</h4>
+            <table class="table table-bordered">
+                <tr>
+                    <th>User</th>
+                    <td>{{ user.username }} ({{ user.id }})</td>
+                </tr>
+                <tr>
+                    <th>Login?</th>
+                    <td>{{ user.is_authenticated|yesno:"✅ Ya,❌ Tidak" }}</td>
+                </tr>
+            </table>
+
+            <h4 class="mt-4">3. URL Info:</h4>
+            <table class="table table-bordered">
+                <tr>
+                    <th>URL Name</th>
+                    <td>{% url 'purchase_add' %}</td>
+                </tr>
+                <tr>
+                    <th>Current Path</th>
+                    <td>{{ request.path }}</td>
+                </tr>
+            </table>
+
+            <h4 class="mt-4">4. Test Form Sederhana:</h4>
+            <form method="POST" action="{% url 'purchase_add' %}">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Supplier</label>
+                        <select name="supplier" class="form-control">
+                            <option value="">Pilih</option>
+                            {% for s in suppliers %}
+                            <option value="{{ s.id }}">{{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label>Catatan</label>
+                        <input type="text" name="notes" class="form-control">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Test Submit</button>
+            </form>
+
+            {% if request.method == 'POST' %}
+            <div class="alert alert-success mt-3">
+                <h5>✅ Form Submitted!</h5>
+                <p>Supplier ID: {{ request.POST.supplier }}</p>
+                <p>Notes: {{ request.POST.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

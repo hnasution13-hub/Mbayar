@@ -1,0 +1,155 @@
+<!-- ==================================================
+     FILE: templates/order/order_detail.html
+     FUNGSI: Halaman detail transaksi untuk melihat informasi lengkap order
+     FITUR:
+       - Menampilkan informasi transaksi (no order, tanggal, kasir, pelanggan, metode bayar, status)
+       - Menampilkan rincian pembayaran (subtotal, diskon, pajak, total, bayar, kembalian)
+       - Menampilkan daftar item yang dibeli beserta harga, jumlah, subtotal, dan catatan
+       - Tombol kembali ke daftar transaksi dan cetak struk
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}Detail Transaksi - Mbayar POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- ===== HEADER HALAMAN ===== -->
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Detail Transaksi: {{ order.order_no }}</h2>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'order_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Kembali
+            </a>
+            <a href="{% url 'print_receipt' order.order_no %}" class="btn btn-primary" target="_blank">
+                <i class="fas fa-print"></i> Cetak Struk
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- ===== INFORMASI TRANSAKSI ===== -->
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Informasi Transaksi</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>No. Order</th>
+                            <td>{{ order.order_no }}</td>
+                        </tr>
+                        <tr>
+                            <th>Tanggal</th>
+                            <td>{{ order.order_date|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Kasir</th>
+                            <td>{{ order.cashier.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Pelanggan</th>
+                            <td>{{ order.customer_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Metode Pembayaran</th>
+                            <td>{{ order.get_payment_method_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status</th>
+                            <td>
+                                {% if order.status == 'paid' %}
+                                    <span class="badge bg-success">Lunas</span>
+                                {% elif order.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Batal</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== RINCIAN PEMBAYARAN ===== -->
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Rincian Pembayaran</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Subtotal</th>
+                            <td class="text-end">Rp {{ order.subtotal|floatformat:0 }}</td>
+                        </tr>
+                        {% if order.discount > 0 %}
+                        <tr>
+                            <th>Diskon</th>
+                            <td class="text-end">-Rp {{ order.discount|floatformat:0 }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if order.tax > 0 %}
+                        <tr>
+                            <th>Pajak</th>
+                            <td class="text-end">Rp {{ order.tax|floatformat:0 }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>TOTAL</th>
+                            <td class="text-end"><strong>Rp {{ order.total|floatformat:0 }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Jumlah Bayar</th>
+                            <td class="text-end">Rp {{ order.amount_paid|floatformat:0 }}</td>
+                        </tr>
+                        <tr>
+                            <th>Kembalian</th>
+                            <td class="text-end">Rp {{ order.change|floatformat:0 }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== ITEM YANG DIBELI ===== -->
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Item yang Dibeli</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Menu</th>
+                                <th>Harga</th>
+                                <th>Jumlah</th>
+                                <th>Subtotal</th>
+                                <th>Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.order_items.all %}
+                            <tr>
+                                <td>{{ item.menu_name }}</td>
+                                <td>Rp {{ item.price|floatformat:0 }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>Rp {{ item.subtotal|floatformat:0 }}</td>
+                                <td>{{ item.notes|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

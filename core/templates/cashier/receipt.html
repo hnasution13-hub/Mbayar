@@ -1,0 +1,201 @@
+<!-- ==================================================
+     FILE: templates/cashier/receipt.html
+     FUNGSI: Halaman cetak struk pembayaran (receipt) setelah transaksi
+     FITUR:
+       - Tampilan struk dengan format thermal printer (lebar 300px)
+       - Informasi toko, nomor order, kasir, pelanggan
+       - Daftar item yang dibeli
+       - Ringkasan subtotal, pajak, total, pembayaran, kembalian
+       - Peringatan jika uang kurang
+       - Tombol cetak dan kembali ke kasir (tidak ikut cetak)
+       - Auto print saat halaman dimuat
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+<!DOCTYPE html>
+{% load static %}
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Struk Pembayaran - Mbayar POS</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            width: 300px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .header {
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .header p {
+            margin: 3px 0;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+        .items {
+            margin: 15px 0;
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 10px 0;
+        }
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 14px;
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 8px 0;
+            margin: 8px 0;
+        }
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+        .warning {
+            color: red;
+            text-align: center;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .footer {
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        hr {
+            border: none;
+            border-top: 1px dashed #000;
+            margin: 8px 0;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Kop Struk -->
+    <div class="header text-center">
+        <h2>Mbayar POS</h2>
+        <p>Jl. Contoh No. 123</p>
+        <p>Telp: 08123456789</p>
+    </div>
+
+    <hr>
+
+    <!-- Informasi Order -->
+    <div class="info-row">
+        <span>No. Order:</span>
+        <span>{{ order.order_no }}</span>
+    </div>
+    <div class="info-row">
+        <span>Tanggal:</span>
+        <span>{{ order.order_date|date:"d/m/Y H:i" }}</span>
+    </div>
+    <div class="info-row">
+        <span>Kasir:</span>
+        <span>{{ order.cashier.username }}</span>
+    </div>
+    <div class="info-row">
+        <span>Pelanggan:</span>
+        <span>{{ order.customer_name }}</span>
+    </div>
+
+    <!-- Daftar Item -->
+    <div class="items">
+        {% for item in order.order_items.all %}
+        <div class="item-row">
+            <span>{{ item.menu_name }} x{{ item.quantity }}</span>
+            <span>Rp {{ item.subtotal|floatformat:0 }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Ringkasan Harga -->
+    <div class="summary-row">
+        <span>Subtotal</span>
+        <span>Rp {{ order.subtotal|floatformat:0 }}</span>
+    </div>
+    
+    <div class="summary-row">
+        <span>Pajak</span>
+        <span>Rp {{ order.tax|floatformat:0 }}</span>
+    </div>
+
+    <div class="total-row">
+        <span>TOTAL</span>
+        <span>Rp {{ order.total|floatformat:0 }}</span>
+    </div>
+
+    <!-- Informasi Pembayaran -->
+    <div class="payment-row">
+        <span>Metode Bayar</span>
+        <span>{{ order.get_payment_method_display }}</span>
+    </div>
+    
+    <div class="payment-row">
+        <span>Jumlah Bayar</span>
+        <span>Rp {{ order.amount_paid|floatformat:0 }}</span>
+    </div>
+    
+    <div class="payment-row">
+        <span>Kembali</span>
+        <span>Rp {{ order.change|floatformat:0 }}</span>
+    </div>
+
+    {% if order.change < 0 %}
+    <div class="warning">
+        ⚠️ Uang kurang Rp {{ order.change|stringformat:"+d"|slice:"1:" }}
+    </div>
+    {% endif %}
+
+    <hr>
+
+    <!-- Footer Struk -->
+    <div class="footer">
+        <p>Terima kasih atas kunjungan Anda</p>
+        <p>Barang yang sudah dibeli tidak dapat ditukar/kembali</p>
+    </div>
+
+    <!-- Tombol Aksi (tidak ikut cetak) -->
+    <div class="text-center no-print" style="margin-top: 20px;">
+        <button onclick="window.print()" style="padding: 8px 20px; margin-right: 10px;">Cetak Struk</button>
+        <button onclick="window.location.href='{% url 'cashier' %}'" style="padding: 8px 20px;">Kembali ke Kasir</button>
+    </div>
+
+    <script>
+        window.onload = function() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

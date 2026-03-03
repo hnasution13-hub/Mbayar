@@ -1,0 +1,221 @@
+<!-- ==================================================
+     FILE: templates/cashier/activity_log.html
+     FUNGSI: Halaman untuk menampilkan log aktivitas user
+     FITUR:
+       - Filter berdasarkan user, aksi, model, tanggal, dan pencarian detail
+       - Tabel riwayat dengan badge warna berdasarkan jenis aksi
+       - Tombol lihat detail perubahan (JSON) untuk log update/delete
+       - Pagination dengan navigasi lengkap
+       - Integrasi dengan template base.html
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+{% load humanize %}
+{% load mbayar_tags %}
+
+{% block title %}Log Aktivitas - Mbayar POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Log Aktivitas User</h2>
+            <p class="text-muted">Riwayat semua aktivitas dalam sistem</p>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">User</label>
+                    <select name="user" class="form-control">
+                        <option value="">Semua User</option>
+                        {% for user in users %}
+                        <option value="{{ user }}" {% if user == user_filter %}selected{% endif %}>
+                            {{ user }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Aksi</label>
+                    <select name="action" class="form-control">
+                        <option value="">Semua Aksi</option>
+                        {% for key, value in actions %}
+                        <option value="{{ key }}" {% if key == action_filter %}selected{% endif %}>
+                            {{ value }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Model</label>
+                    <select name="model" class="form-control">
+                        <option value="">Semua Model</option>
+                        {% for key, value in models %}
+                        <option value="{{ key }}" {% if key == model_filter %}selected{% endif %}>
+                            {{ value }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Dari Tanggal</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Sampai Tanggal</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary form-control">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Search Form -->
+            <form method="GET" class="row mt-3">
+                <div class="col-md-11">
+                    <input type="text" name="search" class="form-control" placeholder="Cari detail..." value="{{ search }}">
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-info form-control">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Log Table -->
+    <div class="card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Riwayat Aktivitas</h5>
+            <span class="badge bg-info">{{ logs.paginator.count }} Total</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Waktu</th>
+                            <th>User</th>
+                            <th>Aksi</th>
+                            <th>Model</th>
+                            <th>Object</th>
+                            <th>Detail</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.waktu_formatted }}</td>
+                            <td><strong>{{ log.username }}</strong></td>
+                            <td>
+                                <span class="badge 
+                                    {% if log.action == 'login' %}bg-success
+                                    {% elif log.action == 'logout' %}bg-secondary
+                                    {% elif log.action == 'create' %}bg-primary
+                                    {% elif log.action == 'update' %}bg-warning
+                                    {% elif log.action == 'delete' %}bg-danger
+                                    {% elif log.action == 'payment' %}bg-info
+                                    {% else %}bg-light text-dark{% endif %}">
+                                    {{ log.get_action_display }}
+                                </span>
+                            </td>
+                            <td>{{ log.get_model_name_display }}</td>
+                            <td>
+                                <small>{{ log.object_repr|truncatechars:30 }}</small>
+                                {% if log.object_id %}
+                                <br><small class="text-muted">ID: {{ log.object_id }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ log.details|truncatechars:50 }}</small>
+                                {% if log.changes %}
+                                <button class="btn btn-sm btn-link p-0" onclick="showChanges('{{ log.id }}')">
+                                    <i class="fas fa-code"></i>
+                                </button>
+                                <div id="changes-{{ log.id }}" style="display: none;">
+                                    <pre class="bg-light p-2 mt-2">{{ log.changes }}</pre>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ log.ip_address|default:'-' }}</small></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <i class="fas fa-history fa-4x text-muted mb-3"></i>
+                                <p class="text-muted">Belum ada log aktivitas</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if logs.paginator.num_pages > 1 %}
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    {% if logs.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if user_filter %}&user={{ user_filter }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if model_filter %}&model={{ model_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search %}&search={{ search }}{% endif %}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ logs.previous_page_number }}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if model_filter %}&model={{ model_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search %}&search={{ search }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Halaman {{ logs.number }} dari {{ logs.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if logs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ logs.next_page_number }}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if model_filter %}&model={{ model_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search %}&search={{ search }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ logs.paginator.num_pages }}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if model_filter %}&model={{ model_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search %}&search={{ search }}{% endif %}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- JavaScript untuk toggle detail perubahan -->
+<script>
+function showChanges(logId) {
+    const changesDiv = document.getElementById('changes-' + logId);
+    if (changesDiv.style.display === 'none') {
+        changesDiv.style.display = 'block';
+    } else {
+        changesDiv.style.display = 'none';
+    }
+}
+</script>
+
+{% endblock %}

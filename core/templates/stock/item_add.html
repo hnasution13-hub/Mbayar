@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Tambah Item Stok{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Tambah Item Stok Baru</h2>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'stock_item_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Kembali
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Kode Barang</label>
+                            <select name="kode_barang" class="form-control" required>
+                                <option value="">-- Pilih Kode Barang --</option>
+                                {% for kb in kode_barang_list %}
+                                <option value="{{ kb.id }}">{{ kb.kode }} - {{ kb.nama }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nama Barang</label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Satuan</label>
+                            <select name="unit" class="form-control" required>
+                                <option value="pcs">Buah/Pcs</option>
+                                <option value="kg">Kilogram</option>
+                                <option value="gram">Gram</option>
+                                <option value="liter">Liter</option>
+                                <option value="ml">Mililiter</option>
+                                <option value="pack">Pack</option>
+                                <option value="box">Box</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Stok Awal</label>
+                            <input type="number" name="stock" class="form-control" step="0.01" min="0" value="0">
+                            <small class="text-muted">Stok awal akan bertambah dari pembelian</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Stok Minimum</label>
+                            <input type="number" name="min_stock" class="form-control" step="0.01" min="0" value="0">
+                            <small class="text-muted">Default 0 (tidak ada peringatan). Isi jika ingin notifikasi stok menipis.</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Supplier</label>
+                            <select name="supplier" class="form-control">
+                                <option value="">-- Pilih Supplier --</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <h5 class="mb-3">Pengaturan Harga Jual (ANDA YANG MENENTUKAN)</h5>
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Catatan:</strong> Harga jual akan dihitung setelah Anda melakukan pembelian pertama.
+                    Setelah itu Anda bisa mengatur markup di sini.
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Markup (%)</label>
+                            <input type="number" name="markup_persen" class="form-control" step="0.01" min="0" value="30">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Markup Nominal (Rp)</label>
+                            <input type="number" name="markup_nominal" class="form-control" step="100" min="0" value="0">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="fas fa-save me-2"></i>Simpan
+                    </button>
+                    <a href="{% url 'stock_item_list' %}" class="btn btn-secondary px-4">
+                        <i class="fas fa-times me-2"></i>Batal
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load mbayar_tags %}
+
+{% block title %}Daftar Item Stok{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Manajemen Stok Barang</h2>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'stock_item_add' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Tambah Item
+            </a>
+            <a href="{% url 'low_stock_list' %}" class="btn btn-warning">
+                <i class="fas fa-exclamation-triangle"></i> Stok Menipis
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>KODE</th>
+                            <th>NAMA BARANG</th>
+                            <th>SATUAN</th>
+                            <th>STOK</th>
+                            <th>MIN STOK</th>
+                            <th>STATUS</th>
+                            <th>HARGA BELI</th>
+                            <th>MARKUP %</th>
+                            <th>MARKUP Rp</th>
+                            <th>HARGA JUAL</th>
+                            <th>HARGA GOFOOD</th>
+                            <th>AKSI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.kode_barang.kode }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.get_unit_display }}</td>
+                            <td>{{ item.stock|floatformat:1 }}</td>
+                            <td>
+                                {{ item.min_stock|floatformat:1 }}
+                                {% if item.min_stock == 0 %}
+                                    <small class="text-muted d-block">(tanpa peringatan)</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.stock <= 0 %}
+                                    <span class="badge bg-danger">Habis</span>
+                                {% elif item.stock <= item.min_stock %}
+                                    <span class="badge bg-warning">Menipis</span>
+                                {% else %}
+                                    <span class="badge bg-success">Aman</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.harga_beli_terakhir|rupiah }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ item.markup_persen|floatformat:0 }}%</span>
+                            </td>
+                            <td>
+                                {% if item.markup_nominal > 0 %}
+                                    <span class="badge bg-info">{{ item.markup_nominal|rupiah }}</span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td><strong class="text-primary">{{ item.harga_jual|rupiah }}</strong></td>
+                            <td>
+                                <strong class="text-success">
+                                    {{ item.harga_gofood|rupiah }}
+                                    <small class="text-muted d-block">(fee 20%)</small>
+                                </strong>
+                            </td>
+                            <td>
+                                <a href="{% url 'stock_item_edit' item.id %}" class="btn btn-sm btn-warning" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'stock_item_delete' item.id %}" class="btn btn-sm btn-danger" 
+                                   onclick="return confirm('Yakin ingin menghapus {{ item.name }}?')" title="Hapus">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                <a href="{% url 'purchase_add' %}" class="btn btn-sm btn-success" title="Beli Stok">
+                                    <i class="fas fa-cart-plus"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="12" class="text-center py-4">
+                                <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">Belum ada data stok barang</p>
+                                <a href="{% url 'stock_item_add' %}" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Tambah Item Pertama
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

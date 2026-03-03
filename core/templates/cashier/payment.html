@@ -1,0 +1,129 @@
+<!-- ==================================================
+     FILE: templates/cashier/payment.html
+     FUNGSI: Halaman konfirmasi pembayaran untuk order tertentu
+     FITUR:
+       - Menampilkan detail pesanan (no order, tanggal, pelanggan, kasir)
+       - Tabel item pesanan
+       - Ringkasan pembayaran (subtotal, diskon, pajak, total)
+       - Form input metode pembayaran dan jumlah bayar
+       - Tombol konfirmasi pembayaran
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}Pembayaran - Mbayar POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Konfirmasi Pembayaran</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Detail Pesanan</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th>No. Order</th>
+                                    <td>{{ order.order_no }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <td>{{ order.order_date|date:"d/m/Y H:i" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Pelanggan</th>
+                                    <td>{{ order.customer_name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Kasir</th>
+                                    <td>{{ order.cashier.username }}</td>
+                                </tr>
+                            </table>
+                            
+                            <h6 class="mt-3">Item Pesanan</h6>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Menu</th>
+                                        <th>Qty</th>
+                                        <th>Harga</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order.order_items.all %}
+                                    <tr>
+                                        <td>{{ item.menu_name }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>Rp {{ item.price|floatformat:0 }}</td>
+                                        <td>Rp {{ item.subtotal|floatformat:0 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Ringkasan Pembayaran</h6>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th>Subtotal</th>
+                                            <td class="text-end">Rp {{ order.subtotal|floatformat:0 }}</td>
+                                        </tr>
+                                        {% if order.discount > 0 %}
+                                        <tr>
+                                            <th>Diskon</th>
+                                            <td class="text-end">-Rp {{ order.discount|floatformat:0 }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if order.tax > 0 %}
+                                        <tr>
+                                            <th>Pajak</th>
+                                            <td class="text-end">Rp {{ order.tax|floatformat:0 }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        <tr>
+                                            <th>TOTAL</th>
+                                            <td class="text-end"><h5>Rp {{ order.total|floatformat:0 }}</h5></td>
+                                        </tr>
+                                    </table>
+                                    
+                                    <form method="POST" action="{% url 'process_payment' order.order_no %}">
+                                        {% csrf_token %}
+                                        <div class="mb-3">
+                                            <label>Metode Pembayaran</label>
+                                            <select name="payment_method" class="form-control">
+                                                <option value="cash">Tunai</option>
+                                                <option value="qris">QRIS</option>
+                                                <option value="card">Kartu</option>
+                                                <option value="transfer">Transfer</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label>Jumlah Bayar</label>
+                                            <input type="number" name="amount_paid" class="form-control" value="{{ order.total }}" min="{{ order.total }}">
+                                        </div>
+                                        
+                                        <button type="submit" class="btn btn-success w-100">
+                                            <i class="fas fa-check"></i> Konfirmasi Pembayaran
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

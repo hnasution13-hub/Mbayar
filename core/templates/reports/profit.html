@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Laporan Laba Rugi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Laporan Laba Rugi</h2>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'export_profit_excel' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" class="btn btn-success">
+                <i class="fas fa-file-excel"></i> Export Excel
+            </a>
+            <a href="{% url 'export_profit_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" class="btn btn-danger">
+                <i class="fas fa-file-pdf"></i> Export PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Tanggal -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="GET" class="row">
+                <div class="col-md-4">
+                    <label>Tanggal Mulai</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-4">
+                    <label>Tanggal Akhir</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-4">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn btn-primary form-control">Tampilkan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ringkasan Laba Rugi -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6>Total Penjualan</h6>
+                    <h3>Rp {{ total_penjualan|floatformat:0 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6>Total HPP</h6>
+                    <h3>Rp {{ total_hpp|floatformat:0 }}</h3>
+                    <small>Harga Pokok Penjualan</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6>Laba Kotor</h6>
+                    <h3>Rp {{ laba_kotor|floatformat:0 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card {% if margin > 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                <div class="card-body">
+                    <h6>Margin</h6>
+                    <h3>{{ margin|floatformat:1 }}%</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grafik Laba Rugi -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5>Grafik Laba Rugi per Hari</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="profitChart" style="height: 300px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Detail Transaksi dengan HPP -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Detail Transaksi</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>No. Order</th>
+                            <th>Menu</th>
+                            <th>Qty</th>
+                            <th>Harga Jual</th>
+                            <th>HPP</th>
+                            <th>Laba</th>
+                            <th>Margin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in detail_items %}
+                        <tr>
+                            <td>{{ item.order_date|date:"d/m/Y H:i" }}</td>
+                            <td>{{ item.order_no }}</td>
+                            <td>{{ item.menu_name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>Rp {{ item.price|floatformat:0 }}</td>
+                            <td>Rp {{ item.hpp|floatformat:0 }}</td>
+                            <td class="{% if item.laba > 0 %}text-success{% else %}text-danger{% endif %}">
+                                Rp {{ item.laba|floatformat:0 }}
+                            </td>
+                            <td>
+                                <span class="badge {% if item.margin > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ item.margin|floatformat:1 }}%
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">Tidak ada data</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('profitChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels|safe }},
+            datasets: [
+                {
+                    label: 'Penjualan',
+                    data: {{ chart_penjualan|safe }},
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'HPP',
+                    data: {{ chart_hpp|safe }},
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Laba',
+                    data: {{ chart_laba|safe }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'Rp ' + value.toLocaleString('id-ID');
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,437 @@
+<!-- ==================================================
+     FILE: templates/admin/admin_data_management.html
+     FUNGSI: Halaman utama manajemen data (import, export, backup database)
+     FITUR:
+       - Tiga tombol utama: Backup Database, Restore Database, Hapus Semua Data
+       - Form Import Data dengan pilihan tipe data dan upload file (Excel/CSV)
+       - Form Export Data dengan pilihan periode dan jenis laporan (Excel/PDF)
+       - Tabel aktivitas terbaru (import, export, backup) dengan status dan detail
+       - Alert messages
+       - Panduan singkat untuk setiap fitur
+       - Progress bar untuk import (JavaScript)
+       - Download template per tipe data
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manajemen Data - Mbayar POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- ==================== HEADER ==================== -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2>
+                <i class="fas fa-database me-2"></i>
+                Manajemen Data
+            </h2>
+            <p class="text-muted">Import, export, dan backup data Mbayar POS</p>
+        </div>
+    </div>
+
+    <!-- ==================== TOOLS DATABASE ==================== -->
+    <!-- Tombol cepat untuk backup, restore, dan hapus semua data -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card bg-light border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-database me-2 text-primary"></i>
+                        Tools Database
+                    </h5>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <a href="{% url 'export_all_data' %}" class="btn btn-success btn-lg px-4">
+                            <i class="fas fa-download me-2"></i>
+                            Backup Database
+                        </a>
+                        <a href="{% url 'import_data_page' %}" class="btn btn-warning btn-lg px-4">
+                            <i class="fas fa-upload me-2"></i>
+                            Restore Database
+                        </a>
+                        <a href="{% url 'clear_database' %}" class="btn btn-danger btn-lg px-4">
+                            <i class="fas fa-trash-alt me-2"></i>
+                            Hapus Semua Data
+                        </a>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <small class="text-success">
+                                <i class="fas fa-check-circle me-1"></i>
+                                <strong>Backup:</strong> Download semua data (Kode Barang, Supplier, Stok, Menu, Transaksi, User) dalam 1 file ZIP
+                            </small>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                <strong>Restore:</strong> Upload file ZIP untuk mengembalikan data. Bisa hapus data lama dulu.
+                            </small>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-danger">
+                                <i class="fas fa-skull-crosswalk me-1"></i>
+                                <strong>Hapus:</strong> Bersihkan SEMUA database! Pastikan sudah backup.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ALERT MESSAGES ==================== -->
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- ==================== IMPORT & EXPORT SECTION ==================== -->
+    <div class="row">
+        <!-- IMPORT CARD -->
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-upload me-2"></i>
+                        Import Data
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" action="{% url 'import_data' %}" id="importForm">
+                        {% csrf_token %}
+                        
+                        <!-- Pilihan Tipe Data -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tipe Data</label>
+                            <select name="data_type" class="form-control" required>
+                                <option value="">-- Pilih Tipe Data --</option>
+                                <option value="kode_barang">📦 Kode Barang (Master)</option>
+                                <option value="supplier">🏢 Supplier</option>
+                                <option value="menu">🍽️ Menu & Bahan</option>
+                            </select>
+                            <small class="text-muted">Pilih jenis data yang akan diimport</small>
+                        </div>
+                        
+                        <!-- Upload File -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">File Excel/CSV</label>
+                            <input type="file" name="import_file" class="form-control" 
+                                   accept=".xlsx,.xls,.csv" required>
+                            <small class="text-muted">Format: .xlsx, .xls, atau .csv</small>
+                        </div>
+                        
+                        <!-- Tombol Aksi -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary flex-grow-1" id="importBtn">
+                                <i class="fas fa-upload me-2"></i>
+                                Import Data
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" 
+                                    onclick="downloadTemplate()">
+                                <i class="fas fa-download me-2"></i>
+                                Template
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Progress Bar (hidden by default) -->
+                    <div id="importProgress" class="mt-3" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <p class="text-center mt-2" id="progressText">Memproses...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Import Info -->
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6><i class="fas fa-info-circle me-2"></i>Panduan Import</h6>
+                    <ul class="small mb-0">
+                        <li>Download template terlebih dahulu untuk melihat format yang benar</li>
+                        <li>Pastikan tidak ada kolom yang kosong untuk data wajib</li>
+                        <li>Untuk menu dengan banyak bahan, gunakan beberapa baris dengan KODE_MENU yang sama</li>
+                        <li>Maksimal 5000 baris per import</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- EXPORT CARD -->
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-download me-2"></i>
+                        Export Data
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="{% url 'export_multiple' %}">
+                        <!-- Periode Laporan -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Periode Laporan</label>
+                            <div class="row">
+                                <div class="col">
+                                    <input type="date" name="start_date" class="form-control" 
+                                           value="{{ start_date|date:'Y-m-d' }}">
+                                </div>
+                                <div class="col">
+                                    <input type="date" name="end_date" class="form-control" 
+                                           value="{{ end_date|date:'Y-m-d' }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Pilihan Laporan -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Pilih Laporan</label>
+                            
+                            <div class="list-group">
+                                <label class="list-group-item">
+                                    <input type="checkbox" name="reports" value="sales_excel" class="form-check-input me-2">
+                                    <i class="fas fa-file-excel text-success me-2"></i>
+                                    Laporan Penjualan (Excel)
+                                </label>
+                                
+                                <label class="list-group-item">
+                                    <input type="checkbox" name="reports" value="profit_excel" class="form-check-input me-2">
+                                    <i class="fas fa-file-excel text-success me-2"></i>
+                                    Laporan Laba Rugi (Excel)
+                                </label>
+                                
+                                <label class="list-group-item">
+                                    <input type="checkbox" name="reports" value="stock_excel" class="form-check-input me-2">
+                                    <i class="fas fa-file-excel text-success me-2"></i>
+                                    Laporan Stok (Excel)
+                                </label>
+                                
+                                <label class="list-group-item">
+                                    <input type="checkbox" name="reports" value="sales_pdf" class="form-check-input me-2">
+                                    <i class="fas fa-file-pdf text-danger me-2"></i>
+                                    Laporan Penjualan (PDF)
+                                </label>
+                                
+                                <label class="list-group-item">
+                                    <input type="checkbox" name="reports" value="profit_pdf" class="form-check-input me-2">
+                                    <i class="fas fa-file-pdf text-danger me-2"></i>
+                                    Laporan Laba Rugi (PDF)
+                                </label>
+                                
+                                <label class="list-group-item bg-light">
+                                    <input type="checkbox" name="reports" value="backup" class="form-check-input me-2">
+                                    <i class="fas fa-database text-primary me-2"></i>
+                                    <strong>Backup Database (.sql)</strong>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Tombol Aksi -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success flex-grow-1">
+                                <i class="fas fa-file-export me-2"></i>
+                                Export Selected
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" 
+                                    onclick="window.location.href='{% url 'backup_database' %}'">
+                                <i class="fas fa-database me-2"></i>
+                                Backup Now
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== RECENT ACTIVITY LOG ==================== -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Aktivitas Terbaru
+                    </h5>
+                    <a href="#" class="btn btn-sm btn-light" onclick="refreshLogs()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="activityTable">
+                            <thead>
+                                <tr>
+                                    <th>Waktu</th>
+                                    <th>User</th>
+                                    <th>Aksi</th>
+                                    <th>Tipe Data</th>
+                                    <th>File</th>
+                                    <th>Status</th>
+                                    <th>Record</th>
+                                    <th>Durasi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_logs %}
+                                <tr>
+                                    <td>{{ log.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        {% if log.user %}
+                                            {{ log.user.username }}
+                                        {% else %}
+                                            <span class="text-muted">System</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if log.action == 'import' %}bg-primary
+                                            {% elif log.action == 'export' %}bg-success
+                                            {% elif log.action == 'backup' %}bg-info
+                                            {% elif log.action == 'restore' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ log.get_action_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ log.get_data_type_display|default:"-" }}</td>
+                                    <td>
+                                        {{ log.filename }}
+                                        <small class="text-muted d-block">{{ log.file_size_display }}</small>
+                                    </td>
+                                    <td>
+                                        {% if log.status == 'success' %}
+                                            <span class="badge bg-success">Sukses</span>
+                                        {% elif log.status == 'failed' %}
+                                            <span class="badge bg-danger">Gagal</span>
+                                            {% if log.error_message %}
+                                            <i class="fas fa-info-circle text-danger" 
+                                               title="{{ log.error_message }}" 
+                                               style="cursor: pointer;" onclick="alert(this.title)"></i>
+                                            {% endif %}
+                                        {% elif log.status == 'warning' %}
+                                            <span class="badge bg-warning">Warning</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if log.records_success > 0 %}
+                                            <span class="text-success">{{ log.records_success }} ✓</span>
+                                            {% if log.records_failed > 0 %}
+                                                <span class="text-danger"> / {{ log.records_failed }} ✗</span>
+                                            {% endif %}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ log.duration_seconds|floatformat:1 }} detik</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">Belum ada aktivitas</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript untuk handling form dan auto-refresh -->
+<script>
+// Download template berdasarkan tipe data
+function downloadTemplate() {
+    const dataType = document.querySelector('select[name="data_type"]').value;
+    if (!dataType) {
+        alert('Pilih tipe data terlebih dahulu');
+        return;
+    }
+    window.location.href = '/download-template/' + dataType + '/';
+}
+
+// Handle form submit dengan progress bar
+document.getElementById('importForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const importBtn = document.getElementById('importBtn');
+    const progress = document.getElementById('importProgress');
+    const progressBar = progress.querySelector('.progress-bar');
+    const progressText = document.getElementById('progressText');
+    
+    // Show progress
+    importBtn.disabled = true;
+    progress.style.display = 'block';
+    progressBar.style.width = '30%';
+    progressText.textContent = 'Mengupload file...';
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressBar.style.width = '100%';
+        if (data.success) {
+            progressText.innerHTML = `<span class="text-success">✅ ${data.message}</span>`;
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            progressText.innerHTML = `<span class="text-danger">❌ ${data.error}</span>`;
+            progressBar.classList.remove('bg-success');
+            progressBar.classList.add('bg-danger');
+            importBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        progressText.innerHTML = `<span class="text-danger">❌ Error: ${error}</span>`;
+        progressBar.classList.add('bg-danger');
+        importBtn.disabled = false;
+    });
+});
+
+// Refresh logs via AJAX
+function refreshLogs() {
+    fetch('/import-export-logs/')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Logs refreshed', data);
+        })
+        .catch(error => console.error('Error refreshing logs:', error));
+}
+
+// Auto-refresh every 30 seconds
+setInterval(refreshLogs, 30000);
+</script>
+
+<style>
+.list-group-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+.progress {
+    height: 25px;
+}
+</style>
+{% endblock %}

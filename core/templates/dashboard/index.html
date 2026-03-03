@@ -1,0 +1,386 @@
+<!-- ==================================================
+     FILE: templates/dashboard/index.html
+     FUNGSI: Halaman dashboard utama sistem Mbayar POS
+     FITUR:
+       - Menampilkan selamat datang dan ringkasan penjualan hari ini
+       - Statistik cepat (penjualan hari ini, total transaksi, menu, stok)
+       - Grafik penjualan 7 hari terakhir dengan Chart.js
+       - Daftar stok menipis dengan tombol aksi cepat
+       - Transaksi terbaru hari ini
+       - Menu terlaris dengan progress bar kontribusi
+       - Animasi hover pada card
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+{% load static %}
+{% load mbayar_tags %}
+
+{% block title %}Dashboard - Mbayar POS{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ===== WELCOME BANNER ===== -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary text-white border-0">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-lg-8">
+                            <h3 class="fw-bold mb-2">
+                                Selamat Datang, {{ user.get_full_name|default:user.username }}! 👋
+                            </h3>
+                            <p class="mb-0 opacity-75">
+                                {{ current_time|date:"l, d F Y" }} | 
+                                Total penjualan hari ini: 
+                                <span class="fw-bold">Rp {{ total_penjualan|rupiah }}</span>
+                            </p>
+                        </div>
+                        <div class="col-lg-4 text-lg-end">
+                            <a href="{% url 'cashier' %}" class="btn btn-light btn-lg">
+                                <i class="fas fa-cash-register me-2"></i>BUKA KASIR
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== STATISTIK CARDS ===== -->
+    <div class="row g-4 mb-4">
+        <!-- Card: Penjualan Hari Ini -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="avatar-lg bg-primary bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-shopping-cart fa-2x text-primary"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Penjualan Hari Ini</h6>
+                            <h3 class="mb-0 fw-bold">Rp {{ total_penjualan|rupiah }}</h3>
+                            <small class="text-success">
+                                <i class="fas fa-arrow-up me-1"></i>{{ persentase_pertumbuhan }}%
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card: Total Transaksi -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="avatar-lg bg-success bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-receipt fa-2x text-success"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Transaksi</h6>
+                            <h3 class="mb-0 fw-bold">{{ jumlah_transaksi }}</h3>
+                            <small class="text-muted">{{ rata_rata_transaksi }} / transaksi</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card: Menu Tersedia -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="avatar-lg bg-info bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-utensils fa-2x text-info"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Menu Tersedia</h6>
+                            <h3 class="mb-0 fw-bold">{{ total_menu }}</h3>
+                            <small class="text-success">{{ menu_tersedia_percent }}% aktif</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card: Total Stok -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="avatar-lg bg-warning bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-boxes fa-2x text-warning"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Stok</h6>
+                            <h3 class="mb-0 fw-bold">{{ total_stok }}</h3>
+                            <small class="text-danger">{{ stok_menipis_count }} menipis</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== GRAFIK & AKTIVITAS ===== -->
+    <div class="row g-4">
+        <!-- Grafik Penjualan 7 Hari -->
+        <div class="col-xl-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-line text-primary me-2"></i>
+                            Grafik Penjualan 7 Hari Terakhir
+                        </h5>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-secondary active">Harian</button>
+                            <button class="btn btn-sm btn-outline-secondary">Mingguan</button>
+                            <button class="btn btn-sm btn-outline-secondary">Bulanan</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="salesChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Kanan: Stok Menipis & Transaksi Terbaru -->
+        <div class="col-xl-4">
+            <!-- Stok Menipis -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        Stok Menipis
+                        {% if stok_menipis_count > 0 %}
+                        <span class="badge bg-danger ms-2">{{ stok_menipis_count }}</span>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for item in stok_menipis %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="mb-1">{{ item.name }}</h6>
+                            <small class="text-muted">{{ item.unit }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-warning">{{ item.stock }} / {{ item.min_stock }}</span>
+                            <a href="{% url 'purchase_add' %}" class="btn btn-sm btn-outline-primary ms-2">
+                                <i class="fas fa-plus"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center py-4">Semua stok aman ✅</p>
+                    {% endfor %}
+                    
+                    {% if stok_menipis_count > 5 %}
+                    <a href="{% url 'low_stock_list' %}" class="btn btn-link w-100">
+                        Lihat semua ({{ stok_menipis_count }})
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Transaksi Terbaru -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock text-info me-2"></i>
+                        Transaksi Terbaru
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for order in orders_today|slice:":5" %}
+                        <a href="{% url 'order_detail' order.order_no %}" 
+                           class="list-group-item list-group-item-action px-4 py-3">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <small class="text-muted">{{ order.order_date|date:"H:i" }}</small>
+                                    <h6 class="mb-1">{{ order.customer_name }}</h6>
+                                    <small class="text-muted">{{ order.order_no }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <strong class="text-success">Rp {{ order.total|rupiah }}</strong><br>
+                                    <span class="badge bg-info">{{ order.get_payment_method_display }}</span>
+                                </div>
+                            </div>
+                        </a>
+                        {% empty %}
+                        <div class="text-center py-4 text-muted">
+                            Belum ada transaksi hari ini
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MENU TERLARIS ===== -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-fire text-danger me-2"></i>
+                        Menu Terlaris Hari Ini
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Menu</th>
+                                    <th class="text-center">Terjual</th>
+                                    <th class="text-end">Total Penjualan</th>
+                                    <th class="text-end">Kontribusi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in menu_terlaris %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold">{{ item.menu_name }}</div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary">{{ item.total_qty }}</span>
+                                    </td>
+                                    <td class="text-end">Rp {{ item.total_sales|rupiah }}</td>
+                                    <td class="text-end">
+                                        <div class="progress" style="height: 5px;">
+                                            <div class="progress-bar bg-success" 
+                                                 style="width: {{ item.persentase }}%"></div>
+                                        </div>
+                                        <small class="text-muted">{{ item.persentase }}%</small>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        Belum ada penjualan hari ini
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== CHART SCRIPT ===== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    
+    // Gradient untuk chart
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(139, 30, 45, 0.5)');
+    gradient.addColorStop(1, 'rgba(139, 30, 45, 0)');
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ last_7_days|safe }},
+            datasets: [{
+                label: 'Penjualan',
+                data: {{ sales_data|safe }},
+                borderColor: '#8B1E2D',
+                backgroundColor: gradient,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#8B1E2D',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return 'Rp ' + value.toLocaleString('id-ID');
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+
+<!-- ===== CUSTOM STYLES ===== -->
+<style>
+.avatar-lg {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #8B1E2D 0%, #A32638 100%);
+}
+
+.card {
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+}
+
+.list-group-item {
+    transition: all 0.2s;
+}
+
+.list-group-item:hover {
+    background: linear-gradient(90deg, rgba(139,30,45,0.02), transparent);
+}
+</style>
+{% endblock %}

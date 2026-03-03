@@ -1,0 +1,94 @@
+<!-- ==================================================
+     FILE: templates/admin/backup_list.html
+     FUNGSI: Halaman untuk menampilkan daftar file backup database
+     FITUR:
+       - Menampilkan daftar backup dalam tabel (nama, ukuran, tanggal)
+       - Tombol untuk melakukan backup baru
+       - Tombol restore dengan konfirmasi peringatan
+       - Tombol download file backup
+       - Empty state jika belum ada backup
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Daftar Backup - Mbayar POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2>
+                <i class="fas fa-database me-2"></i>
+                Manajemen Backup Database
+            </h2>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'backup_database' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-2"></i>
+                Backup Sekarang
+            </a>
+            <a href="{% url 'admin_data_management' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Kembali
+            </a>
+        </div>
+    </div>
+
+    <!-- Backup List Card -->
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Daftar File Backup</h5>
+        </div>
+        <div class="card-body">
+            {% if backups %}
+                <!-- Tabel Backup -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Nama File</th>
+                                <th>Ukuran</th>
+                                <th>Tanggal Modified</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for backup in backups %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td><code>{{ backup.name }}</code></td>
+                                <td>{{ backup.size_display }}</td>
+                                <td>{{ backup.modified_str }}</td>
+                                <td>
+                                    <!-- Tombol Restore -->
+                                    <a href="{% url 'restore_database' backup.name %}" 
+                                       class="btn btn-sm btn-warning"
+                                       onclick="return confirm('PERINGATAN! Restore akan mengembalikan database ke tanggal {{ backup.modified_str }}. Data setelah tanggal tersebut akan HILANG. Lanjutkan?')">
+                                        <i class="fas fa-undo"></i> Restore
+                                    </a>
+                                    <!-- Tombol Download -->
+                                    <a href="{% url 'backup_database' %}" class="btn btn-sm btn-info" download>
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <!-- Empty State -->
+                <div class="text-center py-5">
+                    <i class="fas fa-database fa-4x text-muted mb-3"></i>
+                    <p class="text-muted">Belum ada file backup. Klik "Backup Sekarang" untuk membuat backup pertama.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

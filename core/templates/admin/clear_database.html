@@ -1,0 +1,84 @@
+<!-- ==================================================
+     FILE: templates/admin/delete_database.html
+     FUNGSI: Halaman untuk menghapus seluruh database
+     FITUR:
+       - Peringatan berat dengan daftar data yang akan dihapus
+       - Form konfirmasi dengan input "HAPUS SEMUA"
+       - Tombol hapus dan batal
+       - Menggunakan CSRF token
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}Hapus Database - Mbayar POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <!-- Card Utama -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-danger text-white py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        HAPUS SEMUA DATABASE
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Peringatan Awal -->
+                    <div class="alert alert-warning">
+                        <i class="fas fa-skull-crosswalk me-2"></i>
+                        <strong>PERINGATAN BERAT!</strong>
+                        <p class="mb-0 mt-2">Aksi ini akan menghapus <strong>SEMUA DATA</strong> berikut:</p>
+                        <ul class="mt-2">
+                            <li>Kode Barang</li>
+                            <li>Supplier</li>
+                            <li>Item Stok</li>
+                            <li>Pembelian Stok</li>
+                            <li>Kategori Menu</li>
+                            <li>Menu & Bahan</li>
+                            <li>Transaksi Penjualan</li>
+                            <li>User (kecuali admin yang sedang login)</li>
+                        </ul>
+                    </div>
+
+                    <!-- Peringatan Kedua -->
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>DATA YANG DIHAPUS TIDAK BISA DIKEMBALIKAN!</strong>
+                        <p class="mb-0 mt-2">Pastikan Anda sudah melakukan backup sebelum menghapus.</p>
+                    </div>
+
+                    <!-- Form Konfirmasi -->
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- Input Konfirmasi -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Ketik <span class="text-danger">"HAPUS SEMUA"</span> untuk konfirmasi:
+                            </label>
+                            <input type="text" name="confirm" class="form-control" placeholder="HAPUS SEMUA" required>
+                        </div>
+
+                        <!-- Tombol Aksi -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger flex-grow-1" 
+                                    onclick="return confirm('APAKAH ANDA YAKIN? Semua data akan hilang!')">
+                                <i class="fas fa-trash-alt me-2"></i>
+                                HAPUS SEMUA DATABASE
+                            </button>
+                            <a href="{% url 'admin_data_management' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>
+                                Batal
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

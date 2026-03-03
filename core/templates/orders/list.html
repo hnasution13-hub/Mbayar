@@ -1,0 +1,87 @@
+<!-- ==================================================
+     FILE: templates/transaksi/riwayat_transaksi.html
+     FUNGSI: Menampilkan daftar transaksi (seluruh riwayat atau hanya hari ini)
+     FITUR:
+       - Judul dinamis (Transaksi Hari Ini / Riwayat Transaksi) berdasarkan variabel `today`
+       - Tabel dengan kolom: No. Order, Tanggal, Pelanggan, Kasir, Total, Metode, Status, Aksi
+       - Status ditampilkan dengan badge berwarna (Lunas, Pending, Batal)
+       - Tombol aksi: Lihat detail (eye) dan Cetak struk (print)
+       - Pesan "Belum ada transaksi" jika data kosong
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}Riwayat Transaksi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- ===== HEADER HALAMAN ===== -->
+    <div class="row mb-3">
+        <div class="col">
+            <h2>
+                {% if today %}Transaksi Hari Ini{% else %}Riwayat Transaksi{% endif %}
+            </h2>
+        </div>
+    </div>
+
+    <!-- ===== TABEL DAFTAR TRANSAKSI ===== -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>No. Order</th>
+                            <th>Tanggal</th>
+                            <th>Pelanggan</th>
+                            <th>Kasir</th>
+                            <th>Total</th>
+                            <th>Metode</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>{{ order.order_no }}</td>
+                            <td>{{ order.order_date|date:"d/m/Y H:i" }}</td>
+                            <td>{{ order.customer_name }}</td>
+                            <td>{{ order.cashier.username }}</td>
+                            <td><strong>Rp {{ order.total|floatformat:0 }}</strong></td>
+                            <td>{{ order.get_payment_method_display }}</td>
+                            <td>
+                                {% if order.status == 'paid' %}
+                                    <span class="badge bg-success">Lunas</span>
+                                {% elif order.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Batal</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <!-- Tombol lihat detail order -->
+                                <a href="{% url 'order_detail' order.order_no %}" class="btn btn-sm btn-info" title="Lihat Detail">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <!-- Tombol cetak struk (buka di tab baru) -->
+                                <a href="{% url 'print_receipt' order.order_no %}" class="btn btn-sm btn-secondary" target="_blank" title="Cetak Struk">
+                                    <i class="fas fa-print"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <!-- Pesan jika tidak ada data -->
+                        <tr>
+                            <td colspan="8" class="text-center">Belum ada transaksi</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

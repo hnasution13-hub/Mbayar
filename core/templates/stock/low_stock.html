@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load mbayar_tags %}
+
+{% block title %}Stok Menipis{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Stok Menipis</h2>
+            <p class="text-muted">Barang dengan stok di bawah atau sama dengan minimum</p>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'stock_item_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Kembali
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>KODE</th>
+                            <th>NAMA BARANG</th>
+                            <th>SATUAN</th>
+                            <th>STOK</th>
+                            <th>MIN STOK</th>
+                            <th>HARGA BELI</th>
+                            <th>HARGA JUAL</th>
+                            <th>AKSI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr class="table-warning">
+                            <td>{{ item.kode_barang.kode }}</td>
+                            <td><strong>{{ item.name }}</strong></td>
+                            <td>{{ item.get_unit_display }}</td>
+                            <td class="fw-bold text-danger">{{ item.stock|floatformat:1 }}</td>
+                            <td>{{ item.min_stock|floatformat:1 }}</td>
+                            <td>{{ item.harga_beli_terakhir|rupiah }}</td>
+                            <td>
+                                <strong class="text-primary">{{ item.harga_jual|rupiah }}</strong>
+                            </td>
+                            <td>
+                                <a href="{% url 'stock_item_edit' item.id %}" class="btn btn-sm btn-warning" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'purchase_add' %}" class="btn btn-sm btn-success" title="Beli Stok">
+                                    <i class="fas fa-cart-plus"></i> Beli
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                <p class="text-muted">Semua stok aman! ✅</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

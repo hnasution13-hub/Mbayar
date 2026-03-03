@@ -1,0 +1,67 @@
+<!-- ==================================================
+     FILE: templates/menu/menu_category_list.html
+     FUNGSI: Halaman daftar kategori menu
+     FITUR:
+       - Tabel daftar kategori
+       - Kolom nama, deskripsi, jumlah menu
+       - Tombol aksi edit
+       - Tombol tambah kategori
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}Kategori Menu - Mbayar POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- ===== HEADER ===== -->
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Kategori Menu</h2>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'menu_category_add' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Tambah Kategori
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== TABEL KATEGORI ===== -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nama Kategori</th>
+                            <th>Deskripsi</th>
+                            <th>Jumlah Menu</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr>
+                            <td>{{ category.name }}</td>
+                            <td>{{ category.description|default:"-" }}</td>
+                            <td>{{ category.menu_set.count }}</td>
+                            <td>
+                                <a href="{% url 'menu_category_edit' category.id %}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">Belum ada kategori</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Hitung Ulang Harga Menu{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Hitung Ulang Semua Harga Menu</h2>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Peringatan!</strong> Aksi ini akan menghitung ulang semua harga menu berdasarkan pembelian terakhir. 
+                Pastikan Anda sudah melakukan pembelian stok terlebih dahulu.
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Menu</h5>
+                            <h2>{{ total_menu|default:"0" }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Bahan</h5>
+                            <h2>{{ total_bahan|default:"0" }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Info:</strong> Perhitungan akan menggunakan harga pembelian terakhir untuk setiap bahan.
+                Harga jual akan dihitung ulang berdasarkan modal + markup.
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg" onclick="return confirm('Yakin ingin menghitung ulang semua menu?')">
+                        <i class="fas fa-calculator me-2"></i> Hitung Ulang Semua Menu
+                    </button>
+                    <a href="{% url 'menu_list' %}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-arrow-left me-2"></i> Kembali ke Menu
+                    </a>
+                </div>
+            </form>
+
+            {% if updated %}
+            <div class="alert alert-success mt-4">
+                <i class="fas fa-check-circle me-2"></i>
+                Berhasil menghitung ulang <strong>{{ updated }}</strong> menu!
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Preview Perhitungan -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5>Preview Menu</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Menu</th>
+                            <th>Modal</th>
+                            <th>Markup %</th>
+                            <th>Markup Rp</th>
+                            <th>Harga Jual</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for menu in menus_preview %}
+                        <tr>
+                            <td>{{ menu.name }}</td>
+                            <td>Rp {{ menu.total_modal|floatformat:0 }}</td>
+                            <td>{{ menu.markup_percent }}%</td>
+                            <td>Rp {{ menu.markup_nominal|floatformat:0 }}</td>
+                            <td><strong>Rp {{ menu.selling_price|floatformat:0 }}</strong></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Belum ada menu</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

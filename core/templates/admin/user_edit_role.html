@@ -1,0 +1,110 @@
+<!-- ==================================================
+     FILE: templates/user/edit_role.html
+     FUNGSI: Halaman untuk mengubah role (level akses) pengguna
+     FITUR:
+       - Menampilkan data pengguna (read-only)
+       - Menampilkan role saat ini dengan badge berwarna
+       - Form pilihan role baru (dropdown)
+       - Pesan notifikasi (messages)
+       - Tombol simpan perubahan dan batal
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}Edit Role User - Mbayar POS{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{% url 'user_list' %}">Manajemen User</a></li>
+<li class="breadcrumb-item active" aria-current="page">Edit Role</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <!-- Card Utama -->
+            <div class="card border-0 shadow-sm">
+                <!-- Header Card -->
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-tag me-2"></i>
+                        Edit Role: {{ user.username }}
+                    </h5>
+                </div>
+
+                <!-- Body Card -->
+                <div class="card-body p-4">
+                    {# Tampilkan pesan notifikasi jika ada #}
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="POST">
+                        {% csrf_token %}
+
+                        {# Informasi User (read-only) #}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Username</label>
+                            <input type="text" class="form-control" value="{{ user.username }}" readonly disabled>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nama Lengkap</label>
+                            <input type="text" class="form-control" value="{{ user.get_full_name|default:'-' }}" readonly disabled>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email</label>
+                            <input type="email" class="form-control" value="{{ user.email }}" readonly disabled>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Role Saat Ini</label>
+                            <div>
+                                <span class="badge 
+                                    {% if user.profile.role == 'administrator' %}bg-danger
+                                    {% elif user.profile.role == 'supervisor' %}bg-warning
+                                    {% else %}bg-info{% endif %} 
+                                    px-3 py-2 fs-6">
+                                    {{ user.profile.get_role_display }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {# Pilihan Role Baru #}
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Ubah Role Menjadi</label>
+                            <select name="role" class="form-select" required>
+                                <option value="">-- Pilih Role --</option>
+                                <option value="user" {% if user.profile.role == 'user' %}selected{% endif %}>👤 User (Kasir)</option>
+                                <option value="supervisor" {% if user.profile.role == 'supervisor' %}selected{% endif %}>👥 Supervisor</option>
+                                <option value="administrator" {% if user.profile.role == 'administrator' %}selected{% endif %}>👑 Administrator</option>
+                            </select>
+                        </div>
+
+                        <hr class="my-4">
+
+                        {# Tombol Aksi #}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="fas fa-save me-2"></i>Simpan Perubahan
+                            </button>
+                            <a href="{% url 'user_list' %}" class="btn btn-secondary px-4">
+                                <i class="fas fa-times me-2"></i>Batal
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

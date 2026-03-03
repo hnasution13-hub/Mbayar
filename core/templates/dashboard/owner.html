@@ -1,0 +1,316 @@
+<!-- ==================================================
+# FILE: core/templates/dashboard/owner.html
+# PATH: D:/Project Pyton/Mbayar/core/templates/dashboard/owner.html
+# FUNGSI: Halaman dashboard khusus untuk owner/administrator
+# FITUR:
+#   - Statistik global (penjualan hari ini, bulan ini, jumlah transaksi)
+#   - Grafik penjualan 7 hari terakhir (seluruh cabang)
+#   - Tabel kinerja per cabang (penjualan & transaksi hari ini)
+#   - Daftar stok menipis di semua cabang
+# VERSION: 1.0.0
+# UPDATE TERAKHIR: 03/03/2026
+# ================================================== -->
+
+{% extends 'base.html' %}
+{% load static %}
+{% load mbayar_tags %}
+
+{% block title %}Dashboard Owner - Mbayar POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- ===== WELCOME BANNER ===== -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary text-white border-0">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-lg-8">
+                            <h3 class="fw-bold mb-2">
+                                <i class="fas fa-crown me-2"></i>Dashboard Owner
+                            </h3>
+                            <p class="mb-0 opacity-75">
+                                {{ current_time|date:"l, d F Y" }} | 
+                                Total penjualan seluruh cabang hari ini: 
+                                <span class="fw-bold">Rp {{ total_sales_today|rupiah }}</span>
+                            </p>
+                        </div>
+                        <div class="col-lg-4 text-lg-end">
+                            <a href="{% url 'cashier' %}" class="btn btn-light btn-lg">
+                                <i class="fas fa-cash-register me-2"></i>BUKA KASIR
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== STATISTIK GLOBAL ===== -->
+    <div class="row g-4 mb-4">
+        <!-- Card: Penjualan Hari Ini -->
+        <div class="col-xl-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="avatar-lg bg-primary bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-shopping-cart fa-2x text-primary"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Penjualan Hari Ini</h6>
+                            <h3 class="mb-0 fw-bold">Rp {{ total_sales_today|rupiah }}</h3>
+                            <small class="text-success">
+                                <i class="fas fa-arrow-up me-1"></i> Seluruh cabang
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card: Penjualan Bulan Ini -->
+        <div class="col-xl-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="avatar-lg bg-success bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-calendar-alt fa-2x text-success"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Penjualan Bulan Ini</h6>
+                            <h3 class="mb-0 fw-bold">Rp {{ total_sales_month|rupiah }}</h3>
+                            <small class="text-muted">Sejak 1 {{ current_time|date:"F" }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card: Transaksi Hari Ini -->
+        <div class="col-xl-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="avatar-lg bg-info bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-receipt fa-2x text-info"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Transaksi Hari Ini</h6>
+                            <h3 class="mb-0 fw-bold">{{ transactions_today }}</h3>
+                            <small class="text-muted">Total order selesai</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== GRAFIK PENJUALAN GLOBAL ===== -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line text-primary me-2"></i>
+                        Grafik Penjualan 7 Hari Terakhir (Semua Cabang)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="salesChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== KINERJA PER CABANG ===== -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-store-alt text-success me-2"></i>
+                        Kinerja per Cabang (Hari Ini)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Kode</th>
+                                    <th>Nama Cabang</th>
+                                    <th class="text-end">Penjualan</th>
+                                    <th class="text-center">Transaksi</th>
+                                    <th class="text-end">Rata-rata per Transaksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for outlet in outlets %}
+                                <tr>
+                                    <td><strong>{{ outlet.code }}</strong></td>
+                                    <td>{{ outlet.name }}</td>
+                                    <td class="text-end">
+                                        {% if outlet.sales_today %}
+                                            Rp {{ outlet.sales_today|rupiah }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {{ outlet.transactions_today|default:0 }}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if outlet.transactions_today and outlet.sales_today %}
+                                            Rp {{ outlet.sales_today|divide:outlet.transactions_today|rupiah }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="fas fa-store-slash fa-2x mb-2"></i><br>
+                                        Belum ada data cabang
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== STOK KRITIS GLOBAL ===== -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        Stok Menipis di Semua Cabang
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Cabang</th>
+                                    <th class="text-end">Stok</th>
+                                    <th class="text-end">Min Stok</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in low_stock_items %}
+                                <tr>
+                                    <td>{{ item.name }}</td>
+                                    <td>{{ item.outlet.name|default:"Pusat" }}</td>
+                                    <td class="text-end">{{ item.stock|floatformat:1 }} {{ item.unit }}</td>
+                                    <td class="text-end">{{ item.min_stock|floatformat:1 }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-warning">Menipis</span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i><br>
+                                        Semua stok dalam kondisi aman
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== CHART SCRIPT ===== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ last_7_days|safe }},
+            datasets: [{
+                label: 'Penjualan',
+                data: {{ sales_data|safe }},
+                borderColor: '#8B1E2D',
+                backgroundColor: 'rgba(139, 30, 45, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#8B1E2D',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0,0,0,0.05)' },
+                    ticks: {
+                        callback: function(value) {
+                            return 'Rp ' + value.toLocaleString('id-ID');
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+
+<!-- ===== CUSTOM STYLE ===== -->
+<style>
+.avatar-lg {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #8B1E2D 0%, #A32638 100%);
+}
+.card {
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(139, 30, 45, 0.02);
+}
+</style>
+{% endblock %}

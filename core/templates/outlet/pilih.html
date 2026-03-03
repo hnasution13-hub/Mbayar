@@ -1,0 +1,75 @@
+<!-- ==================================================
+     FILE: templates/outlet/pilih_cabang.html
+     FUNGSI: Halaman untuk memilih cabang/outlet tempat kasir bekerja
+     FITUR:
+       - Menampilkan cabang yang sedang aktif (jika ada) beserta informasinya
+       - Daftar semua cabang yang tersedia dalam bentuk kartu
+       - Setiap cabang dapat dipilih dengan mengirim form POST (menyertakan outlet_id)
+       - Tampilan responsif dengan grid (2 kolom pada layar sedang ke atas)
+       - Pesan jika tidak ada cabang tersedia
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Pilih Cabang - Mbayar POS{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-store me-2"></i>
+                        Pilih Cabang
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+
+                    {% if current_outlet %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Anda sedang bekerja di: <strong>{{ current_outlet.name }}</strong>
+                    </div>
+                    <hr>
+                    {% endif %}
+
+                    {% if outlets %}
+                        <div class="row">
+                            {% for outlet in outlets %}
+                            <div class="col-md-6 mb-3">
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="outlet_id" value="{{ outlet.id }}">
+                                    <button type="submit" class="btn btn-outline-primary w-100 p-3 text-start">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <i class="fas fa-store fa-2x"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1">{{ outlet.name }}</h6>
+                                                <small class="text-muted">
+                                                    {{ outlet.address|truncatechars:50 }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-store-slash fa-4x text-muted mb-3"></i>
+                            <p class="text-muted">Tidak ada cabang yang tersedia</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

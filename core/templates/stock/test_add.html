@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}TEST - Tambah Pembelian Stok{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3>TEST PAGE - TAMBAH PEMBELIAN STOK</h3>
+        </div>
+        <div class="card-body">
+            <h4>Data dari Database:</h4>
+            <p>Supplier: {{ suppliers|length }} data</p>
+            <p>Items: {{ items|length }} data</p>
+            
+            <hr>
+            
+            <h4>Test Tombol Sederhana:</h4>
+            <button class="btn btn-success" id="testButton1">Test Button 1</button>
+            <button class="btn btn-primary" id="testButton2">Test Button 2</button>
+            
+            <hr>
+            
+            <h4>Tabel Item:</h4>
+            <table class="table table-bordered" id="itemsTable">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Jumlah</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsBody">
+                    <tr class="item-row">
+                        <td>
+                            <select class="form-control">
+                                <option value="">Pilih Item</option>
+                                {% for item in items %}
+                                <option value="{{ item.id }}">{{ item.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" class="form-control quantity" value="1">
+                        </td>
+                        <td>
+                            <button class="btn btn-danger btn-sm remove-item">Hapus</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <button class="btn btn-success" id="addItemRow">➕ Tambah Item</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Simple JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("=== TEST PAGE LOADED ===");
+    
+    // Test button 1
+    document.getElementById('testButton1').addEventListener('click', function() {
+        alert('Button 1 clicked!');
+        console.log('Button 1 clicked');
+    });
+    
+    // Test button 2
+    document.getElementById('testButton2').addEventListener('click', function() {
+        alert('Button 2 clicked!');
+        console.log('Button 2 clicked');
+    });
+    
+    // Add item button
+    document.getElementById('addItemRow').addEventListener('click', function() {
+        console.log('Add item clicked');
+        
+        const tbody = document.getElementById('itemsBody');
+        const firstRow = document.querySelector('.item-row');
+        const newRow = firstRow.cloneNode(true);
+        
+        // Reset input
+        newRow.querySelector('input').value = '1';
+        newRow.querySelector('select').value = '';
+        
+        tbody.appendChild(newRow);
+        
+        // Add delete event to new row
+        newRow.querySelector('.remove-item').addEventListener('click', function() {
+            if (document.querySelectorAll('.item-row').length > 1) {
+                newRow.remove();
+            }
+        });
+    });
+    
+    // Delete button for first row
+    document.querySelector('.remove-item').addEventListener('click', function() {
+        if (document.querySelectorAll('.item-row').length > 1) {
+            this.closest('.item-row').remove();
+        }
+    });
+});
+</script>
+{% endblock %}

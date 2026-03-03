@@ -1,0 +1,1294 @@
+<!-- ==================================================
+     FILE: templates/cashier/index.html
+     FUNGSI: Halaman utama kasir untuk memproses transaksi penjualan
+     FITUR:
+       - Tampilan menu produk dengan kategori dan pencarian
+       - Panel keranjang belanja dengan opsi GoFood
+       - Kalkulasi subtotal, diskon, pajak, pembulatan
+       - Modal untuk memilih modifier (opsi tambahan) pada menu
+       - Proses pembayaran dengan berbagai metode
+     VERSION: 1.0.0
+     UPDATE TERAKHIR: Initial implementation
+     ================================================== -->
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Kasir - Mbayar POS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/cashier.css' %}">
+<style>
+    /* ===== RESET ===== */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    html, body {
+        height: 100%;
+        width: 100%;
+        font-family: 'Inter', sans-serif;
+        background: #f8f9fa;
+    }
+    
+    /* ===== BODY BISA SCROLL ===== */
+    body {
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    /* ===== CASHIER CONTAINER ===== */
+    .cashier-container {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 20px;
+        padding: 20px;
+        min-height: 100vh;
+        height: auto;
+        width: 100%;
+        background: #f8f9fa;
+    }
+    
+    /* ===== MENU PANEL ===== */
+    .menu-panel {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+        height: fit-content;
+        overflow: visible;
+    }
+    
+    .menu-panel .panel-header {
+        padding: 18px 24px;
+        background: linear-gradient(135deg, #8B1E2D, #A32638);
+        color: white;
+    }
+    
+    /* Category Filter */
+    .category-filter {
+        padding: 16px 24px;
+        background: white;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+    }
+    
+    .category-btn {
+        padding: 6px 18px;
+        border: 1px solid #dee2e6;
+        border-radius: 30px;
+        background: white;
+        color: #495057;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+    }
+    
+    .category-btn.active {
+        background: #8B1E2D;
+        color: white;
+        border-color: #8B1E2D;
+    }
+    
+    /* Search Box */
+    .search-box {
+        padding: 16px 24px;
+        background: white;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .search-box input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+    }
+    
+    /* Menu Grid */
+    .menu-grid-container {
+        padding: 24px;
+        background: #f8f9fa;
+        overflow: visible;
+        height: auto;
+    }
+    
+    .menu-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+        gap: 16px;
+    }
+    
+    .menu-item {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 20px 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    
+    .menu-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(139,30,45,0.15);
+        border-color: #8B1E2D;
+    }
+    
+    .menu-item.has-modifier::after {
+        content: '✨';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 14px;
+        background: #8B1E2D;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .menu-image {
+        width: 90px;
+        height: 90px;
+        margin: 0 auto 12px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 3px solid #f8f9fa;
+    }
+    
+    .menu-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .no-image {
+        width: 90px;
+        height: 90px;
+        margin: 0 auto 12px;
+        border-radius: 50%;
+        background: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .price-normal {
+        color: #8B1E2D;
+        font-weight: bold;
+    }
+    
+    .price-gofood {
+        color: #00A651;
+        font-weight: bold;
+    }
+    
+    .price-info {
+        font-size: 0.7rem;
+        color: #6c757d;
+        margin-top: 4px;
+    }
+    
+    /* ===== CART PANEL ===== */
+    .cart-panel {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+        height: fit-content;
+        overflow: visible;
+    }
+    
+    .cart-header {
+        padding: 18px 24px;
+        background: linear-gradient(135deg, #8B1E2D, #A32638);
+        color: white;
+    }
+    
+    .customer-info {
+        padding: 20px 24px;
+        background: white;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .customer-info input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+    }
+    
+    /* Opsi GoFood */
+    .gofood-option {
+        margin: 0 24px 20px;
+        padding: 16px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .badge-gofood {
+        background: #00A651;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-size: 0.7rem;
+        margin-left: 5px;
+    }
+    
+    /* Cart Items */
+    .cart-items-container {
+        padding: 0 20px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .cart-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .cart-item-title {
+        font-weight: 600;
+    }
+    
+    .modifier-text {
+        font-size: 0.7rem;
+        color: #6c757d;
+        margin-top: 2px;
+        line-height: 1.2;
+    }
+    
+    .gofood-badge-item {
+        background: #00A651;
+        color: white;
+        font-size: 0.6rem;
+        padding: 2px 5px;
+        border-radius: 3px;
+        margin-left: 5px;
+    }
+    
+    .cart-item-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .qty-btn {
+        width: 30px;
+        height: 30px;
+        border: 1px solid #dee2e6;
+        background: white;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .qty-btn:hover {
+        background: #8B1E2D;
+        color: white;
+        border-color: #8B1E2D;
+    }
+    
+    .qty-btn.remove:hover {
+        background: #dc3545;
+        border-color: #dc3545;
+    }
+    
+    .qty-value {
+        min-width: 30px;
+        text-align: center;
+        font-weight: 600;
+    }
+    
+    /* Empty Cart */
+    .empty-cart {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+    }
+    
+    /* Cart Summary */
+    .cart-summary {
+        padding: 20px 24px;
+        background: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+    
+    .summary-row.total {
+        font-weight: bold;
+        font-size: 1.2rem;
+        color: #8B1E2D;
+        border-top: 2px solid #8B1E2D;
+        padding-top: 10px;
+        margin-top: 10px;
+    }
+    
+    .total-final {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #8B1E2D;
+    }
+    
+    /* Payment Section */
+    .payment-section {
+        padding: 24px;
+        background: white;
+        border-top: 2px solid #8B1E2D;
+    }
+    
+    .payment-section select,
+    .payment-section input {
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+    }
+    
+    .checkout-btn {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #8B1E2D, #A32638);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .checkout-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(139,30,45,0.3);
+    }
+    
+    .checkout-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    /* ===== MODIFIER MODAL STYLES ===== */
+    .modifier-modal .modal-content {
+        border-radius: 16px;
+        border: none;
+    }
+    
+    .modifier-modal .modal-header {
+        background: linear-gradient(135deg, #8B1E2D, #A32638);
+        color: white;
+        border-radius: 16px 16px 0 0;
+        padding: 16px 24px;
+    }
+    
+    .modifier-modal .modal-header .btn-close {
+        filter: brightness(0) invert(1);
+    }
+    
+    .modifier-modal .modal-body {
+        padding: 24px;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+    
+    .modifier-group {
+        background: #f8f9fa;
+        border-radius: 12px;
+        transition: all 0.2s;
+    }
+    
+    .modifier-group.border-danger {
+        border: 2px solid #dc3545 !important;
+        background: #fff5f5;
+    }
+    
+    .modifier-group h6 {
+        color: #8B1E2D;
+        margin-bottom: 12px;
+    }
+    
+    .form-check {
+        margin-bottom: 8px;
+        padding: 8px 12px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .form-check:hover {
+        border-color: #8B1E2D;
+    }
+    
+    .form-check-input:checked {
+        background-color: #8B1E2D;
+        border-color: #8B1E2D;
+    }
+    
+    .btn-maroon {
+        background: linear-gradient(135deg, #8B1E2D, #A32638);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .btn-maroon:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(139,30,45,0.3);
+        color: white;
+    }
+    
+    .btn-maroon:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .text-maroon {
+        color: #8B1E2D;
+    }
+    
+    /* Responsive */
+    @media (max-width: 992px) {
+        .cashier-container {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cashier-container">
+    <!-- MENU PANEL -->
+    <div class="menu-panel">
+        <div class="panel-header">
+            <h5>
+                <i class="fas fa-utensils"></i>
+                Pilih Menu
+            </h5>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="category-filter">
+            <button class="category-btn active" data-category="all">Semua</button>
+            {% for category in categories %}
+            <button class="category-btn" data-category="{{ category.id }}">{{ category.name }}</button>
+            {% endfor %}
+        </div>
+
+        <!-- Search Box -->
+        <div class="search-box">
+            <input type="text" id="searchMenu" placeholder="Cari menu..." class="form-control">
+        </div>
+
+        <!-- Menu Grid -->
+        <div class="menu-grid-container">
+            <div class="menu-grid" id="menuGrid">
+                {% for menu in menus %}
+                <div class="menu-item {% if menu.modifiers.exists %}has-modifier{% endif %}" 
+                     data-id="{{ menu.id }}" 
+                     data-name="{{ menu.name }}" 
+                     data-price="{{ menu.selling_price }}"
+                     data-price-gofood="{{ menu.gofood_price }}"
+                     data-category="{{ menu.category.id }}"
+                     data-has-modifiers="{% if menu.modifiers.exists %}true{% else %}false{% endif %}">
+                    {% if menu.image %}
+                    <div class="menu-image">
+                        <img src="{{ menu.image.url }}" alt="{{ menu.name }}">
+                    </div>
+                    {% else %}
+                    <div class="no-image">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                    {% endif %}
+                    <h5>{{ menu.name }}</h5>
+                    <div class="price price-normal">
+                        Rp {{ menu.selling_price|floatformat:0 }}
+                    </div>
+                    <div class="price price-gofood" style="display: none;">
+                        Rp {{ menu.gofood_price|floatformat:0 }}
+                    </div>
+                    <div class="price-info">
+                        <small>GoFood: Rp {{ menu.gofood_price|floatformat:0 }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- CART PANEL -->
+    <div class="cart-panel">
+        <div class="cart-header">
+            <h5>
+                <i class="fas fa-shopping-cart"></i>
+                Keranjang Belanja
+            </h5>
+            <small>Klik menu untuk menambah</small>
+        </div>
+
+        <!-- Customer Info -->
+        <div class="customer-info">
+            <label>Nama Pelanggan</label>
+            <input type="text" id="customerName" class="form-control" value="Umum" placeholder="Masukkan nama">
+        </div>
+
+        <!-- Opsi GoFood -->
+        <div class="gofood-option">
+            <label class="fw-bold mb-2">Opsi Pembayaran</label>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="orderType" id="orderNormal" value="normal" checked>
+                <label class="form-check-label" for="orderNormal">
+                    <i class="fas fa-store me-1"></i> Makan di Tempat / Take Away
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="orderType" id="orderGoFood" value="gofood">
+                <label class="form-check-label" for="orderGoFood">
+                    <i class="fas fa-motorcycle me-1"></i> GoFood 
+                    <span class="badge-gofood">+20%</span>
+                </label>
+            </div>
+            <small class="text-muted d-block mt-2">
+                <i class="fas fa-info-circle"></i>
+                GoFood akan menggunakan harga khusus dari stok barang
+            </small>
+        </div>
+
+        <!-- Cart Items -->
+        <div class="cart-items-container">
+            <div class="cart-items" id="cartItems">
+                <div class="empty-cart">
+                    <i class="fas fa-shopping-cart"></i>
+                    <p>Keranjang masih kosong</p>
+                    <small>Klik menu untuk menambah</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Summary -->
+        <div class="cart-summary">
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <span id="subtotal">Rp 0</span>
+            </div>
+            <div class="summary-row">
+                <span>Diskon</span>
+                <span>
+                    <input type="number" id="discount" class="form-control form-control-sm" value="0" min="0" style="width: 100px; text-align: right;">
+                </span>
+            </div>
+            <div class="summary-row">
+                <span>Pajak (10%)</span>
+                <span id="tax">Rp 0</span>
+            </div>
+            <div class="summary-row">
+                <span>Total Sebelum Pembulatan</span>
+                <span id="totalBeforeRound">Rp 0</span>
+            </div>
+            <div class="summary-row total">
+                <span>TOTAL FINAL</span>
+                <span class="total-final" id="totalFinal">Rp 0</span>
+            </div>
+            <div class="total-bulat text-end" id="roundingInfo"></div>
+        </div>
+
+        <!-- Payment Section -->
+        <div class="payment-section">
+            <div>
+                <label>Metode Pembayaran</label>
+                <select id="paymentMethod" class="form-control">
+                    <option value="cash">💰 Tunai</option>
+                    <option value="qris">📱 QRIS</option>
+                    <option value="card">💳 Kartu</option>
+                    <option value="transfer">🏦 Transfer</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Jumlah Bayar</label>
+                <input type="number" id="amountPaid" class="form-control" value="0" min="0">
+            </div>
+
+            <div>
+                <label>Kembalian</label>
+                <input type="text" id="change" class="form-control" readonly value="Rp 0">
+            </div>
+
+            <button class="checkout-btn" id="processPayment" disabled>
+                <i class="fas fa-shopping-cart"></i>
+                Proses Pembayaran
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODIFIER MODAL -->
+<div class="modal fade modifier-modal" id="modifierModal" tabindex="-1" aria-labelledby="modifierModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modifierModalLabel">
+                    <i class="fas fa-pizza-slice me-2"></i>
+                    <span id="selectedMenuName"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modifierModalBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-maroon" role="status"></div>
+                    <p class="mt-2">Memuat opsi...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="row w-100">
+                    <div class="col-md-6 d-flex align-items-center">
+                        <h5 class="mb-0">Total: <span id="modalTotalPrice" class="text-maroon fw-bold">Rp 0</span></h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-1"></i> Batal
+                        </button>
+                        <button type="button" class="btn btn-maroon" id="confirmModifierBtn" disabled>
+                            <i class="fas fa-cart-plus me-1"></i> Tambah ke Keranjang
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSRF Token -->
+<form style="display: none;">
+    {% csrf_token %}
+</form>
+
+<!-- SCRIPT LENGKAP DENGAN SEMUA FUNGSI ASLI + MODIFIER -->
+<script>
+// ==================== VARIABEL GLOBAL ====================
+let cart = [];
+let useGoFood = false;
+
+// ==================== FUNGSI PEMBULATAN ====================
+function bulatkanKePuluhan(nilai) {
+    let duaDigitTerakhir = nilai % 100;
+    
+    if (duaDigitTerakhir >= 50) {
+        return Math.floor(nilai / 100) * 100 + 50;
+    } else {
+        return Math.floor(nilai / 100) * 100;
+    }
+}
+
+// ==================== FUNGSI FORMAT RUPIAH ====================
+function formatRupiah(angka) {
+    return 'Rp ' + Math.round(angka).toLocaleString('id-ID');
+}
+
+// ==================== FUNGSI KERANJANG ====================
+function addToCart(id, name, price) {
+    const existingIndex = cart.findIndex(item => item.id === id);
+    
+    if (existingIndex >= 0) {
+        cart[existingIndex].quantity += 1;
+    } else {
+        cart.push({
+            id: id,
+            name: name,
+            price: price,
+            quantity: 1,
+            isGofood: useGoFood,
+            modifiers: []  // Tambahkan field modifiers
+        });
+    }
+    
+    renderCart();
+}
+
+// Fungsi baru untuk menambah dengan modifier
+function addToCartWithModifier(id, name, basePrice, modifiers, isGofood) {
+    // Hitung total harga dengan modifier
+    let totalPrice = basePrice;
+    modifiers.forEach(mod => {
+        totalPrice += mod.price || 0;
+    });
+    
+    // Cek apakah item yang sama dengan modifier yang sama sudah ada
+    const existingIndex = cart.findIndex(item => 
+        item.id === id && 
+        JSON.stringify(item.modifiers) === JSON.stringify(modifiers) &&
+        item.isGofood === isGofood
+    );
+    
+    if (existingIndex >= 0) {
+        cart[existingIndex].quantity += 1;
+    } else {
+        cart.push({
+            id: id,
+            name: name,
+            basePrice: basePrice,
+            price: totalPrice,
+            totalPrice: totalPrice,
+            modifiers: modifiers || [],
+            quantity: 1,
+            isGofood: isGofood
+        });
+    }
+    
+    renderCart();
+}
+
+function removeFromCart(id) {
+    cart = cart.filter(item => item.id !== id);
+    renderCart();
+}
+
+function updateQuantity(id, change) {
+    const itemIndex = cart.findIndex(item => item.id === id);
+    
+    if (itemIndex >= 0) {
+        cart[itemIndex].quantity += change;
+        
+        if (cart[itemIndex].quantity <= 0) {
+            cart.splice(itemIndex, 1);
+        }
+        
+        renderCart();
+    }
+}
+
+function renderCart() {
+    const cartContainer = document.getElementById('cartItems');
+    const processBtn = document.getElementById('processPayment');
+    
+    if (cart.length === 0) {
+        cartContainer.innerHTML = `
+            <div class="empty-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <p>Keranjang masih kosong</p>
+                <small>Klik menu untuk menambah</small>
+            </div>
+        `;
+        processBtn.disabled = true;
+    } else {
+        let html = '';
+        
+        cart.forEach(item => {
+            const itemTotal = (item.totalPrice || item.price) * item.quantity;
+            const gofoodBadge = item.isGofood ? '<span class="gofood-badge-item">GoFood</span>' : '';
+            
+            // Buat string modifier
+            let modifierText = '';
+            if (item.modifiers && item.modifiers.length > 0) {
+                modifierText = '<div class="modifier-text">';
+                modifierText += item.modifiers.map(m => {
+                    if (m.price > 0) {
+                        return `${m.optionName} (+Rp ${m.price.toLocaleString('id-ID')})`;
+                    }
+                    return m.optionName;
+                }).join(', ');
+                modifierText += '</div>';
+            }
+            
+            html += `
+                <div class="cart-item">
+                    <div class="cart-item-info">
+                        <div class="cart-item-title">
+                            ${item.name} ${gofoodBadge}
+                        </div>
+                        ${modifierText}
+                        <div class="cart-item-price ${item.isGofood ? 'price-gofood' : 'price-normal'}">
+                            Rp ${itemTotal.toLocaleString('id-ID')}
+                            <small class="text-muted d-block">@ Rp ${(item.totalPrice || item.price).toLocaleString('id-ID')}</small>
+                        </div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button class="qty-btn" onclick="updateQuantity('${item.id}', -1)">−</button>
+                        <span class="qty-value">${item.quantity}</span>
+                        <button class="qty-btn" onclick="updateQuantity('${item.id}', 1)">+</button>
+                        <button class="qty-btn remove" onclick="removeFromCart('${item.id}')">×</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        if (useGoFood) {
+            html += '<div class="alert alert-success mt-2 p-2 small">✅ Menggunakan harga GoFood</div>';
+        }
+        
+        cartContainer.innerHTML = html;
+        processBtn.disabled = false;
+    }
+    
+    updateTotals();
+}
+
+// ==================== FUNGSI UPDATE TOTAL ====================
+function updateTotals() {
+    const subtotal = cart.reduce((sum, item) => sum + ((item.totalPrice || item.price) * item.quantity), 0);
+    const discount = parseFloat(document.getElementById('discount').value) || 0;
+    const tax = subtotal * 0.1;
+    const totalSebelum = subtotal - discount + tax;
+    const totalFinal = bulatkanKePuluhan(totalSebelum);
+    const selisih = totalFinal - totalSebelum;
+    
+    document.getElementById('subtotal').textContent = formatRupiah(subtotal);
+    document.getElementById('tax').textContent = formatRupiah(tax);
+    document.getElementById('totalBeforeRound').textContent = formatRupiah(totalSebelum);
+    document.getElementById('totalFinal').textContent = formatRupiah(totalFinal);
+    
+    const roundingInfo = document.getElementById('roundingInfo');
+    if (selisih !== 0) {
+        const roundedText = selisih > 0 ? 'dibulatkan ke atas' : 'dibulatkan ke bawah';
+        roundingInfo.innerHTML = `<i class="fas fa-calculator"></i> ${roundedText} Rp ${Math.abs(selisih).toLocaleString('id-ID')}`;
+    } else {
+        roundingInfo.innerHTML = '';
+    }
+    
+    updateChange();
+}
+
+function updateChange() {
+    const totalFinal = parseFloat(document.getElementById('totalFinal').textContent.replace(/[^\d]/g, ''));
+    const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
+    const change = amountPaid - totalFinal;
+    
+    document.getElementById('change').value = formatRupiah(change);
+    
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    if (paymentMethod === 'cash' && amountPaid < totalFinal) {
+        document.getElementById('processPayment').disabled = true;
+    } else {
+        document.getElementById('processPayment').disabled = cart.length === 0;
+    }
+}
+
+// ==================== FUNGSI PROSES PEMBAYARAN ====================
+function processPayment() {
+    if (cart.length === 0) {
+        alert('Keranjang masih kosong');
+        return;
+    }
+    
+    const orderData = {
+        customer_name: document.getElementById('customerName').value,
+        items: cart.map(item => ({
+            menu_id: item.id,
+            quantity: item.quantity,
+            notes: '',
+            is_gofood: item.isGofood,
+            modifiers: item.modifiers || []  // Kirim modifiers ke server
+        })),
+        payment_method: document.getElementById('paymentMethod').value,
+        amount_paid: parseFloat(document.getElementById('amountPaid').value) || 0,
+        discount: parseFloat(document.getElementById('discount').value) || 0,
+        order_type: useGoFood ? 'gofood' : 'normal',
+        total_final: parseFloat(document.getElementById('totalFinal').textContent.replace(/[^\d]/g, ''))
+    };
+    
+    fetch('{% url "create_order" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(orderData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            cart = [];
+            useGoFood = false;
+            document.getElementById('orderNormal').checked = true;
+            renderCart();
+            window.location.href = `/cashier/print/${data.order_no}/`;
+        } else {
+            alert('Terjadi kesalahan: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan jaringan');
+    });
+}
+
+// ==================== MODIFIER MANAGER ====================
+class ModifierManager {
+    constructor() {
+        this.currentMenu = null;
+        this.currentModifiers = [];
+        this.modifierModal = new bootstrap.Modal(document.getElementById('modifierModal'));
+        this.init();
+    }
+
+    init() {
+        document.getElementById('confirmModifierBtn')?.addEventListener('click', () => {
+            this.confirmAddToCart();
+        });
+    }
+
+    async showModifierModal(menuId, menuName, basePrice, isGofood = false) {
+        try {
+            document.getElementById('modifierModalBody').innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-maroon" role="status"></div>
+                    <p class="mt-2">Memuat opsi...</p>
+                </div>
+            `;
+            this.modifierModal.show();
+
+            const response = await fetch(`/api/menu/${menuId}/modifiers/`);
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Gagal memuat modifier');
+            }
+            
+            this.currentMenu = {
+                id: menuId,
+                name: menuName,
+                basePrice: isGofood ? data.gofood_price : data.base_price,
+                isGofood: isGofood,
+                modifiers: data.modifiers
+            };
+            
+            this.renderModifierModal();
+            
+        } catch (error) {
+            console.error('Error loading modifiers:', error);
+            this.modifierModal.hide();
+            alert('Gagal memuat opsi menu. Menambahkan tanpa modifier.');
+            addToCart(menuId, menuName, basePrice);
+        }
+    }
+
+    renderModifierModal() {
+        const modalBody = document.getElementById('modifierModalBody');
+        const menu = this.currentMenu;
+        
+        document.getElementById('selectedMenuName').textContent = menu.name;
+        
+        if (!menu.modifiers || menu.modifiers.length === 0) {
+            modalBody.innerHTML = `
+                <p class="text-muted text-center py-4">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i><br>
+                    Tidak ada opsi tambahan untuk menu ini
+                </p>
+            `;
+            this.updateModalTotal();
+            return;
+        }
+        
+        let html = '';
+        this.currentModifiers = [];
+        
+        menu.modifiers.forEach((modifier) => {
+            html += `<div class="modifier-group mb-4 p-3 border rounded" data-modifier-id="${modifier.id}">`;
+            html += `<h6 class="fw-bold mb-3">${modifier.name}`;
+            if (modifier.required) {
+                html += ` <span class="text-danger">*</span>`;
+            }
+            html += `</h6>`;
+            
+            if (modifier.type === 'text') {
+                html += `
+                    <textarea class="form-control modifier-input" 
+                              data-modifier-id="${modifier.id}"
+                              data-modifier-name="${modifier.name}"
+                              placeholder="Tulis catatan di sini..."
+                              rows="2"></textarea>
+                `;
+            } else {
+                modifier.options.forEach(option => {
+                    const inputType = modifier.type === 'single' ? 'radio' : 'checkbox';
+                    const name = modifier.type === 'single' ? `modifier_${modifier.id}` : `modifier_${modifier.id}_${option.id}`;
+                    const isChecked = option.is_default ? 'checked' : '';
+                    
+                    html += `
+                        <div class="form-check mb-2 p-2 border-bottom">
+                            <input class="form-check-input modifier-option" 
+                                   type="${inputType}" 
+                                   name="${name}"
+                                   data-modifier-id="${modifier.id}"
+                                   data-modifier-name="${modifier.name}"
+                                   data-option-id="${option.id}"
+                                   data-option-name="${option.name}"
+                                   data-price="${option.price_addition}"
+                                   ${isChecked}>
+                            <label class="form-check-label w-100 d-flex justify-content-between">
+                                <span>${option.name}</span>
+                                ${option.price_addition > 0 ? 
+                                    `<span class="text-success fw-bold">+Rp ${option.price_addition.toLocaleString('id-ID')}</span>` : 
+                                    ''}
+                            </label>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += `</div>`;
+        });
+        
+        modalBody.innerHTML = html;
+        
+        modalBody.querySelectorAll('.modifier-option, .modifier-input').forEach(input => {
+            input.addEventListener('change', () => this.updateModalTotal());
+            input.addEventListener('input', () => this.updateModalTotal());
+        });
+        
+        modalBody.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const name = this.name;
+                document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+                    if (r !== this) r.checked = false;
+                });
+            });
+        });
+        
+        this.updateModalTotal();
+    }
+
+    updateModalTotal() {
+        let additionalPrice = 0;
+        const selectedModifiers = [];
+        const errors = [];
+        
+        document.querySelectorAll('.modifier-group').forEach(g => {
+            g.classList.remove('border-danger');
+        });
+        
+        const existingError = document.getElementById('modifierErrors');
+        if (existingError) existingError.remove();
+        
+        document.querySelectorAll('.modifier-group').forEach(group => {
+            const modifierId = group.dataset.modifierId;
+            const modifier = this.currentMenu.modifiers.find(m => m.id == modifierId);
+            if (!modifier) return;
+            
+            const selectedInGroup = [];
+            
+            group.querySelectorAll('.modifier-option:checked').forEach(option => {
+                const price = parseFloat(option.dataset.price) || 0;
+                additionalPrice += price;
+                
+                selectedInGroup.push({
+                    modifierId: modifierId,
+                    modifierName: option.dataset.modifierName,
+                    optionId: option.dataset.optionId,
+                    optionName: option.dataset.optionName,
+                    price: price
+                });
+            });
+            
+            group.querySelectorAll('.modifier-input').forEach(input => {
+                if (input.value.trim()) {
+                    selectedInGroup.push({
+                        modifierId: modifierId,
+                        modifierName: input.dataset.modifierName,
+                        optionName: input.value.trim(),
+                        price: 0,
+                        isText: true
+                    });
+                }
+            });
+            
+            if (modifier.required && selectedInGroup.length === 0) {
+                errors.push(`${modifier.name} wajib dipilih`);
+                group.classList.add('border-danger');
+            }
+            
+            if (modifier.type === 'multiple') {
+                const count = selectedInGroup.length;
+                if (modifier.min_select > 0 && count < modifier.min_select) {
+                    errors.push(`${modifier.name}: minimal pilih ${modifier.min_select}`);
+                    group.classList.add('border-danger');
+                }
+                if (modifier.max_select > 0 && count > modifier.max_select) {
+                    errors.push(`${modifier.name}: maksimal pilih ${modifier.max_select}`);
+                    group.classList.add('border-danger');
+                }
+            }
+            
+            selectedModifiers.push(...selectedInGroup);
+        });
+        
+        this.currentModifiers = selectedModifiers;
+        
+        const total = this.currentMenu.basePrice + additionalPrice;
+        document.getElementById('modalTotalPrice').textContent = 'Rp ' + Math.round(total).toLocaleString('id-ID');
+        
+        const confirmBtn = document.getElementById('confirmModifierBtn');
+        if (errors.length > 0) {
+            confirmBtn.disabled = true;
+            let errorHtml = '<div class="alert alert-danger mt-3" id="modifierErrors">';
+            errors.forEach(e => { errorHtml += `<div><i class="fas fa-exclamation-circle me-1"></i> ${e}</div>`; });
+            errorHtml += '</div>';
+            document.getElementById('modifierModalBody').insertAdjacentHTML('beforeend', errorHtml);
+        } else {
+            confirmBtn.disabled = false;
+        }
+    }
+
+    confirmAddToCart() {
+        addToCartWithModifier(
+            this.currentMenu.id,
+            this.currentMenu.name,
+            this.currentMenu.basePrice,
+            this.currentModifiers,
+            this.currentMenu.isGofood
+        );
+        this.modifierModal.hide();
+    }
+}
+
+// ==================== INISIALISASI ====================
+let modifierManager;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Inisialisasi modifier manager
+    if (typeof bootstrap !== 'undefined') {
+        modifierManager = new ModifierManager();
+    }
+    
+    // Event listener untuk menu item
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const id = this.dataset.id;
+            const name = this.dataset.name;
+            const price = useGoFood ? 
+                parseFloat(this.dataset.priceGofood) : 
+                parseFloat(this.dataset.price);
+            const hasModifiers = this.dataset.hasModifiers === 'true';
+            
+            if (hasModifiers && modifierManager) {
+                modifierManager.showModifierModal(id, name, price, useGoFood);
+            } else {
+                addToCart(id, name, price);
+            }
+        });
+    });
+    
+    // Event listener untuk radio button GoFood
+    document.querySelectorAll('input[name="orderType"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            useGoFood = (this.value === 'gofood');
+            
+            document.querySelectorAll('.menu-item').forEach(item => {
+                const normalPrice = item.querySelector('.price-normal');
+                const gofoodPrice = item.querySelector('.price-gofood');
+                
+                if (useGoFood) {
+                    if (normalPrice) normalPrice.style.display = 'none';
+                    if (gofoodPrice) gofoodPrice.style.display = 'block';
+                } else {
+                    if (normalPrice) normalPrice.style.display = 'block';
+                    if (gofoodPrice) gofoodPrice.style.display = 'none';
+                }
+            });
+            
+            cart = cart.map(item => {
+                const menuItem = document.querySelector(`.menu-item[data-id="${item.id}"]`);
+                if (menuItem) {
+                    const newPrice = useGoFood ? 
+                        parseFloat(menuItem.dataset.priceGofood) : 
+                        parseFloat(menuItem.dataset.price);
+                    
+                    let totalPrice = newPrice;
+                    if (item.modifiers && item.modifiers.length > 0) {
+                        item.modifiers.forEach(mod => {
+                            totalPrice += mod.price || 0;
+                        });
+                    }
+                    
+                    return {
+                        ...item,
+                        basePrice: newPrice,
+                        price: totalPrice,
+                        totalPrice: totalPrice,
+                        isGofood: useGoFood
+                    };
+                }
+                return item;
+            });
+            
+            renderCart();
+        });
+    });
+    
+    // Event listener untuk search
+    document.getElementById('searchMenu').addEventListener('input', function(e) {
+        const search = e.target.value.toLowerCase();
+        document.querySelectorAll('.menu-item').forEach(item => {
+            const name = item.dataset.name.toLowerCase();
+            item.style.display = name.includes(search) ? '' : 'none';
+        });
+    });
+    
+    // Event listener untuk category filter
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            const category = this.dataset.category;
+            document.querySelectorAll('.menu-item').forEach(item => {
+                if (category === 'all' || item.dataset.category === category) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+    
+    // Event listener untuk input
+    document.getElementById('discount').addEventListener('input', updateTotals);
+    document.getElementById('amountPaid').addEventListener('input', updateChange);
+    
+    // Event listener untuk payment method
+    document.getElementById('paymentMethod').addEventListener('change', function() {
+        const amountPaid = document.getElementById('amountPaid');
+        if (this.value === 'cash') {
+            amountPaid.disabled = false;
+        } else {
+            amountPaid.disabled = true;
+            amountPaid.value = document.getElementById('totalFinal').textContent.replace(/[^\d]/g, '');
+            updateChange();
+        }
+    });
+    
+    // Event listener untuk proses payment
+    document.getElementById('processPayment').addEventListener('click', processPayment);
+    
+    updateTotals();
+});
+</script>
+{% endblock %}

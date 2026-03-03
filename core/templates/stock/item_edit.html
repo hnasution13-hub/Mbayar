@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load mbayar_tags %}
+
+{% block title %}Edit Item Stok: {{ item.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Edit Item Stok: {{ item.name }}</h2>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'stock_item_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Kembali
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6>Informasi Stok & Modal Saat Ini</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Kode Barang:</td>
+                                    <td class="fw-bold">{{ item.kode_barang.kode }} - {{ item.kode_barang.nama }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Stok Tersedia:</td>
+                                    <td class="fw-bold">{{ item.stock|floatformat:1 }} {{ item.unit }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Total Modal (Uang Keluar):</td>
+                                    <td class="fw-bold">{{ item.total_nilai_stok|rupiah }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Harga Beli Terakhir:</td>
+                                    <td class="fw-bold">{{ item.harga_beli_terakhir|rupiah }}/{{ item.unit }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Rata-rata Modal/Unit:</td>
+                                    <td class="fw-bold">{{ item.harga_rata_rata|rupiah }}/{{ item.unit }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Harga Jual Saat Ini:</td>
+                                    <td class="fw-bold text-primary">{{ item.harga_jual|rupiah }}/{{ item.unit }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Harga GoFood Saat Ini:</td>
+                                    <td class="fw-bold text-success">{{ item.harga_gofood|rupiah }}/{{ item.unit }}</td>
+                                </tr>
+                            </table>
+                            
+                            <div class="alert alert-warning mt-3 mb-0">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Catatan:</strong>
+                                <ul class="mb-0 mt-1">
+                                    <li>Stok berasal dari akumulasi pembelian dan tidak dapat diedit manual</li>
+                                    <li>Kode barang tidak dapat diubah karena terhubung dengan riwayat pembelian</li>
+                                    <li>Supplier diatur saat pembelian, tidak perlu di sini</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <form method="POST">
+                {% csrf_token %}
+                
+                <!-- Informasi Kode Barang (Read Only) -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Kode Barang</label>
+                            <input type="text" class="form-control" value="{{ item.kode_barang.kode }} - {{ item.kode_barang.nama }}" readonly disabled>
+                            <small class="text-muted">Kode barang tidak dapat diubah</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nama Barang</label>
+                            <input type="text" name="name" class="form-control" value="{{ item.name }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Satuan</label>
+                            <select name="unit" class="form-control" required>
+                                <option value="pcs" {% if item.unit == 'pcs' %}selected{% endif %}>Buah/Pcs</option>
+                                <option value="kg" {% if item.unit == 'kg' %}selected{% endif %}>Kilogram</option>
+                                <option value="gram" {% if item.unit == 'gram' %}selected{% endif %}>Gram</option>
+                                <option value="liter" {% if item.unit == 'liter' %}selected{% endif %}>Liter</option>
+                                <option value="ml" {% if item.unit == 'ml' %}selected{% endif %}>Mililiter</option>
+                                <option value="pack" {% if item.unit == 'pack' %}selected{% endif %}>Pack</option>
+                                <option value="box" {% if item.unit == 'box' %}selected{% endif %}>Box</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Stok Minimum (Peringatan)</label>
+                            <input type="number" name="min_stock" class="form-control" step="0.01" min="0" value="{{ item.min_stock|default:'0' }}">
+                            <small class="text-muted">
+                                {% if item.min_stock == 0 %}
+                                    <span class="text-warning">⚠️ Stok minimum 0 = tidak ada peringatan stok menipis</span>
+                                    Tidak ada notifikasi stok habis (0 = non-aktif)
+                                {% else %}
+                                    Akan muncul peringatan jika stok ≤ {{ item.min_stock }}
+                                {% endif %}
+                            </small>    
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Stok Saat Ini (Otomatis)</label>
+                            <input type="text" class="form-control bg-light" value="{{ item.stock|floatformat:1 }} {{ item.unit }}" readonly disabled>
+                            <small class="text-muted">Stok otomatis dari semua pembelian</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <h5 class="mb-3">Pengaturan Harga Jual (ANDA YANG MENENTUKAN)</h5>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Harga Jual = Modal + Markup</strong><br>
+                    Modal menggunakan rata-rata modal per unit dari semua pembelian.
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Markup (%)</label>
+                            <input type="number" name="markup_persen" id="markup_persen" class="form-control" step="0.01" min="0" value="{{ item.markup_persen }}">
+                            <small class="text-muted">Contoh: 30 = untung 30%</small>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Markup Nominal (Rp)</label>
+                            <input type="number" name="markup_nominal" id="markup_nominal" class="form-control" step="100" min="0" value="{{ item.markup_nominal }}">
+                            <small class="text-muted">Contoh: 2000 = tambah Rp 2.000</small>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Harga Jual Normal</label>
+                            <div class="form-control bg-light fw-bold text-primary" id="previewHarga" style="font-size: 1.1rem;">
+                                {{ item.harga_jual|rupiah }}
+                            </div>
+                            <small class="text-muted">Preview harga normal</small>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Harga GoFood</label>
+                            <div class="form-control bg-light fw-bold text-success" id="previewGoFood" style="font-size: 1.1rem;">
+                                {{ item.harga_gofood|rupiah }}
+                            </div>
+                            <small class="text-muted">Fee GoFood 20% (dapat diubah di settings)</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="fas fa-save me-2"></i>Update
+                    </button>
+                    <a href="{% url 'stock_item_list' %}" class="btn btn-secondary px-4">
+                        <i class="fas fa-times me-2"></i>Batal
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const markupPersen = document.getElementById('markup_persen');
+    const markupNominal = document.getElementById('markup_nominal');
+    const previewHarga = document.getElementById('previewHarga');
+    const previewGoFood = document.getElementById('previewGoFood');
+    
+    // Modal rata-rata dari server
+    const modalRata = {{ item.harga_rata_rata|floatformat:0 }};
+    const gofoodFee = 20; // Fee GoFood 20% (sama dengan di settings)
+    
+    // Fungsi pembulatan ke atas (sama dengan di Python)
+    function bulatkanKeAtas(nilai) {
+        if (nilai <= 0) return 0;
+        
+        // Aturan untuk nilai kecil
+        if (nilai < 500) return 500;
+        
+        // Aturan untuk nilai menengah (500-1000)
+        if (nilai <= 1000) return 1000;
+        
+        // Aturan untuk nilai besar (>1000) - kelipatan 100
+        return Math.ceil(nilai / 100) * 100;
+    }
+    
+    function hitungPreview() {
+        const persen = parseFloat(markupPersen.value) || 0;
+        const nominal = parseFloat(markupNominal.value) || 0;
+        
+        // Hitung markup dari persen
+        const markupDariPersen = (persen / 100) * modalRata;
+        
+        // Total markup
+        const totalMarkup = markupDariPersen + nominal;
+        
+        // Harga jual sebelum pembulatan
+        const hargaJualSebelum = modalRata + totalMarkup;
+        
+        // Harga jual setelah pembulatan
+        const hargaJual = bulatkanKeAtas(hargaJualSebelum);
+        
+        // Harga GoFood sebelum pembulatan
+        const hargaGoFoodSebelum = hargaJual / (1 - (gofoodFee / 100));
+        
+        // Harga GoFood setelah pembulatan
+        const hargaGoFood = bulatkanKeAtas(hargaGoFoodSebelum);
+        
+        // Tampilkan preview
+        previewHarga.innerHTML = 'Rp ' + Math.round(hargaJual).toLocaleString('id-ID');
+        previewGoFood.innerHTML = 'Rp ' + Math.round(hargaGoFood).toLocaleString('id-ID');
+        
+        // Tambahkan info pembulatan di console (untuk debugging)
+        console.log('Harga sebelum: Rp ' + Math.round(hargaJualSebelum).toLocaleString('id-ID'));
+        console.log('Harga setelah: Rp ' + Math.round(hargaJual).toLocaleString('id-ID'));
+        console.log('GoFood sebelum: Rp ' + Math.round(hargaGoFoodSebelum).toLocaleString('id-ID'));
+        console.log('GoFood setelah: Rp ' + Math.round(hargaGoFood).toLocaleString('id-ID'));
+    }
+    
+    markupPersen.addEventListener('input', hitungPreview);
+    markupNominal.addEventListener('input', hitungPreview);
+    
+    // Panggil sekali untuk inisialisasi
+    hitungPreview();
+});
+</script>
+{% endblock %}

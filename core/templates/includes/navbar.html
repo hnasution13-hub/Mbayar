@@ -1,0 +1,280 @@
+<!-- 
+============================================================
+# FILE: core/templates/includes/navbar.html
+# PATH: D:/Project Pyton/Mbayar/core/templates/includes/navbar.html
+# FUNGSI: Navigasi bar utama untuk semua halaman aplikasi
+# FITUR: 
+#   - Breadcrumb dinamis
+#   - Notifikasi real-time
+#   - Menu user dengan avatar
+#   - Ubah Password
+#   - Outlet selector khusus administrator
+# VERSION: 2.0.0
+# UPDATE TERAKHIR: Penambahan link Reset Password & Outlet Selector
+============================================================
+-->
+
+{% load static %}
+
+<!-- ================================================== -->
+<!-- MAIN NAVIGATION BAR -->
+<!-- ================================================== -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm" aria-label="Main navigation bar">
+    <div class="container-fluid">
+        
+        <!-- ========================================== -->
+        <!-- LEFT SECTION: Breadcrumb & Mobile Toggle   -->
+        <!-- ========================================== -->
+        <div class="d-flex align-items-center">
+            <!-- Mobile sidebar toggle button -->
+            <button class="btn btn-sm btn-outline-secondary me-3 d-md-none" 
+                    onclick="toggleSidebar()"
+                    aria-label="Toggle sidebar"
+                    title="Buka/tutup sidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <!-- Dynamic breadcrumb navigation -->
+            <nav aria-label="Breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'dashboard' %}" class="text-maroon" title="Dashboard">
+                            <i class="fas fa-home"></i>
+                            <span class="visually-hidden">Dashboard</span>
+                        </a>
+                    </li>
+                    {% block breadcrumb %}{% endblock %}
+                </ol>
+            </nav>
+        </div>
+        
+        <!-- ========================================== -->
+        <!-- RIGHT SECTION: Notifications & User Menu   -->
+        <!-- ========================================== -->
+        <div class="d-flex align-items-center gap-3">
+            
+            <!-- ====================================== -->
+            <!-- NOTIFICATION DROPDOWN                   -->
+            <!-- ====================================== -->
+            <div class="dropdown">
+                <button class="btn btn-light position-relative" type="button" 
+                        data-bs-toggle="dropdown" 
+                        aria-label="Notifications"
+                        title="Lihat notifikasi">
+                    <i class="fas fa-bell"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        3
+                        <span class="visually-hidden">notifikasi baru</span>
+                    </span>
+                </button>
+                
+                <!-- Notification dropdown menu -->
+                <div class="dropdown-menu dropdown-menu-end p-2" style="width: 300px;" aria-label="Notification list">
+                    <h6 class="dropdown-header fw-bold">Notifikasi</h6>
+                    
+                    <a class="dropdown-item" href="#">
+                        <small class="text-danger d-block">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Stok menipis: Gula (2 kg)
+                        </small>
+                        <small class="text-muted">5 menit yang lalu</small>
+                    </a>
+                    
+                    <a class="dropdown-item" href="#">
+                        <small class="text-success d-block">
+                            <i class="fas fa-check-circle me-1"></i>
+                            Pembelian berhasil
+                        </small>
+                        <small class="text-muted">1 jam yang lalu</small>
+                    </a>
+                    
+                    <hr class="my-2">
+                    
+                    <a class="dropdown-item text-center small text-maroon" href="#">
+                        Lihat semua notifikasi
+                    </a>
+                </div>
+            </div>
+            
+            <!-- ====================================== -->
+            <!-- USER MENU DROPDOWN                      -->
+            <!-- ====================================== -->
+            <div class="dropdown">
+                <a class="d-flex align-items-center text-decoration-none dropdown-toggle" 
+                   href="#" 
+                   data-bs-toggle="dropdown" 
+                   aria-label="User menu"
+                   title="Menu pengguna">
+                    
+                    <!-- User info (hidden on mobile) -->
+                    <div class="text-end me-3 d-none d-md-block">
+                        <div class="fw-bold">{{ user.get_full_name|default:user.username }}</div>
+                        <small class="text-muted">{{ user.groups.all.0.name|default:"Kasir" }}</small>
+                    </div>
+                    
+                    <!-- User avatar -->
+                    <div class="avatar">
+                        {% if user.profile.photo %}
+                        <img src="{{ user.profile.photo.url }}" 
+                             alt="{{ user.username }}"
+                             style="width: 40px; height: 40px; border-radius: 10px;">
+                        {% else %}
+                        <div style="width: 40px; height: 40px; border-radius: 10px; 
+                                   background: linear-gradient(135deg, #8B1E2D, #A32638);
+                                   color: white; display: flex; align-items: center; 
+                                   justify-content: center; font-weight: bold;"
+                             aria-label="Avatar placeholder">
+                            {{ user.username|slice:":1"|upper }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </a>
+                
+                <!-- User dropdown menu -->
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li>
+                        <a class="dropdown-item" href="{% url 'profile' %}">
+                            <i class="fas fa-user-circle me-2 text-maroon"></i>
+                            Profil Saya
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'profile_edit' %}">
+                            <i class="fas fa-edit me-2 text-maroon"></i>
+                            Edit Profil
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'password_reset' %}">
+                            <i class="fas fa-key me-2 text-maroon"></i>
+                            Ubah Password
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item text-danger" href="{% url 'logout' %}">
+                            <i class="fas fa-sign-out-alt me-2"></i>
+                            Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- ================================================== -->
+<!-- OUTLET SELECTOR (ADMIN ONLY)                        -->
+<!-- ================================================== -->
+{% if user.is_authenticated and user.profile.role == 'administrator' %}
+<div class="container-fluid mt-2 mb-0">
+    <div class="d-flex justify-content-end">
+        <div class="dropdown me-3">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                    type="button" 
+                    data-bs-toggle="dropdown"
+                    aria-label="Pilih cabang"
+                    title="Ganti cabang aktif">
+                <i class="fas fa-store me-1"></i>
+                {% if outlet %}
+                    <span class="fw-semibold">{{ outlet.code }}</span>
+                {% else %}
+                    Pilih Cabang
+                {% endif %}
+            </button>
+            
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li>
+                    <a class="dropdown-item" href="{% url 'pilih_outlet' %}">
+                        <i class="fas fa-exchange-alt me-2 text-maroon"></i>
+                        Ganti Cabang
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <span class="dropdown-item-text text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Cabang Aktif: <span class="fw-bold">{{ outlet.name|default:'Semua Cabang' }}</span>
+                    </span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ================================================== -->
+<!-- JAVASCRIPT: Sidebar Toggle Function                 -->
+<!-- ================================================== -->
+<script>
+/**
+ * Toggle sidebar visibility on mobile devices
+ * Menambahkan/menghapus class 'show' pada elemen sidebar
+ */
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('show');
+        
+        // Optional: Add overlay for mobile
+        if (sidebar.classList.contains('show')) {
+            createOverlay();
+        } else {
+            removeOverlay();
+        }
+    }
+}
+
+/**
+ * Create overlay background when sidebar is open on mobile
+ */
+function createOverlay() {
+    if (!document.querySelector('.sidebar-overlay')) {
+        const overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1040;
+            display: none;
+        `;
+        
+        // Show only on mobile
+        if (window.innerWidth < 768) {
+            overlay.style.display = 'block';
+            overlay.addEventListener('click', toggleSidebar);
+        }
+        
+        document.body.appendChild(overlay);
+    }
+}
+
+/**
+ * Remove overlay background
+ */
+function removeOverlay() {
+    const overlay = document.querySelector('.sidebar-overlay');
+    if (overlay) {
+        overlay.remove();
+    }
+}
+
+// Handle window resize to manage overlay
+window.addEventListener('resize', function() {
+    if (window.innerWidth >= 768) {
+        removeOverlay();
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.classList.remove('show');
+        }
+    }
+});
+</script>
+
+<!-- ================================================== -->
+<!-- END OF FILE: navbar.html                            -->
+<!-- ================================================== -->

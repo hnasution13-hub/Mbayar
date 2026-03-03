@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+
+{% block title %}Tambah Pembelian Stok{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h2>Tambah Pembelian Stok</h2>
+            <p class="text-muted">Isi dengan benar untuk laporan keuangan yang akurat</p>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'purchase_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Kembali
+            </a>
+        </div>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <strong>Penting untuk Laporan Keuangan:</strong>
+        <ul class="mb-0 mt-1">
+            <li><strong>HARGA TOTAL</strong> = Total uang yang Anda keluarkan (contoh: Rp 100.000 untuk 10 kg)</li>
+            <li><strong>HARGA/UNIT</strong> = Akan dihitung otomatis (HARGA TOTAL ÷ JUMLAH)</li>
+            <li>Semua nominal akan tersimpan untuk laporan laba rugi</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" id="purchaseForm">
+                {% csrf_token %}
+                
+                <!-- Supplier Info -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Supplier <span class="text-danger">*</span></label>
+                        <select name="supplier" class="form-control" required>
+                            <option value="">-- Pilih Supplier --</option>
+                            {% for supplier in suppliers %}
+                            <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Catatan</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Catatan pembelian..."></textarea>
+                    </div>
+                </div>
+
+                <h5 class="mb-3">
+                    <i class="fas fa-shopping-cart me-2"></i>Item Pembelian
+                </h5>
+                
+                <!-- Tabel Item -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped" id="itemsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="min-width: 200px;">ITEM <span class="text-danger">*</span></th>
+                                <th style="min-width: 100px;">CARA HITUNG</th>
+                                <th style="min-width: 80px;">JUMLAH <span class="text-danger">*</span></th>
+                                <th style="min-width: 120px;">HARGA TOTAL (Rp) <span class="text-danger">*</span></th>
+                                <th style="min-width: 100px;">HARGA/UNIT</th>
+                                <th style="min-width: 60px;">AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsBody">
+                            <!-- BARIS PERTAMA -->
+                            <tr class="item-row">
+                                <td>
+                                    <select name="kode_barang_id[]" class="form-control" required>
+                                        <option value="">-- Pilih Barang --</option>
+                                        {% for kb in kode_barang_list %}
+                                        <option value="{{ kb.id }}">{{ kb.kode }} - {{ kb.nama }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="cara_hitung[]" class="form-control cara-hitung">
+                                        <option value="bulk">BULK (total untuk semua)</option>
+                                        <option value="piece">PIECE (harga per satuan)</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" name="jumlah[]" class="form-control jumlah" 
+                                           required min="0.01" step="0.01" value="1">
+                                </td>
+                                <td>
+                                    <input type="number" name="harga_total[]" class="form-control harga-total" 
+                                           required min="1" step="1" value="0" placeholder="Rp">
+                                </td>
+                                <td class="harga-unit-display text-center fw-bold text-success">-</td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-danger btn-sm remove-item">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="6">
+                                    <button type="button" class="btn btn-success" id="addItemRow">
+                                        <i class="fas fa-plus"></i> Tambah Item
+                                    </button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                <!-- Total Pembelian -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="text-muted">
+                        <i class="fas fa-calculator"></i> 
+                        Total uang keluar untuk laporan keuangan
+                    </div>
+                    <h3>TOTAL: <span id="totalPengeluaran" class="text-primary">Rp 0</span></h3>
+                </div>
+
+                <!-- Tombol Submit -->
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg px-5" id="submitBtn">
+                        <i class="fas fa-save me-2"></i>Simpan Pembelian
+                    </button>
+                    <a href="{% url 'purchase_list' %}" class="btn btn-secondary btn-lg px-5">
+                        <i class="fas fa-times me-2"></i>Batal
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Format angka ke Rupiah
+    function formatRupiah(angka) {
+        return 'Rp ' + Math.round(angka).toLocaleString('id-ID');
+    }
+    
+    // Validasi input harus positif
+    function validasiInput(input) {
+        const value = parseFloat(input.value);
+        if (value < 0) {
+            input.value = 0;
+            alert('Nilai tidak boleh negatif!');
+        }
+    }
+    
+    // Hitung harga per unit untuk satu baris
+    function hitungBaris(row) {
+        const jumlah = parseFloat(row.querySelector('.jumlah').value) || 0;
+        const hargaTotal = parseFloat(row.querySelector('.harga-total').value) || 0;
+        const unitDisplay = row.querySelector('.harga-unit-display');
+        
+        let hargaUnit = 0;
+        
+        if (jumlah > 0 && hargaTotal > 0) {
+            hargaUnit = hargaTotal / jumlah;
+            unitDisplay.textContent = 'Rp ' + Math.floor(hargaUnit).toLocaleString('id-ID');
+        } else {
+            unitDisplay.textContent = '-';
+        }
+        
+        return hargaTotal;
+    }
+    
+    // Hitung total semua baris
+    function hitungSemua() {
+        let total = 0;
+        document.querySelectorAll('.item-row').forEach(function(row) {
+            total += hitungBaris(row);
+        });
+        document.getElementById('totalPengeluaran').textContent = formatRupiah(total);
+    }
+    
+    // Event listener untuk setiap baris
+    function attachRowEvents(row) {
+        // Validasi input tidak negatif
+        row.querySelectorAll('.jumlah, .harga-total').forEach(function(input) {
+            input.addEventListener('change', function() {
+                validasiInput(this);
+            });
+            
+            input.addEventListener('input', function() {
+                hitungSemua();
+            });
+        });
+        
+        row.querySelector('.cara-hitung').addEventListener('change', function() {
+            hitungSemua();
+        });
+        
+        row.querySelector('.remove-item').addEventListener('click', function() {
+            if (document.querySelectorAll('.item-row').length > 1) {
+                row.remove();
+                hitungSemua();
+            } else {
+                alert('Minimal satu item harus diisi');
+            }
+        });
+    }
+    
+    // Tombol tambah item
+    document.getElementById('addItemRow').addEventListener('click', function() {
+        const tbody = document.getElementById('itemsBody');
+        const firstRow = document.querySelector('.item-row');
+        const newRow = firstRow.cloneNode(true);
+        
+        // Reset input
+        newRow.querySelectorAll('input').forEach(input => {
+            if (input.classList.contains('jumlah')) {
+                input.value = '1';
+            } else {
+                input.value = '0';
+            }
+        });
+        
+        newRow.querySelector('select[name="kode_barang_id[]"]').value = '';
+        newRow.querySelector('.cara-hitung').value = 'bulk';
+        newRow.querySelector('.harga-unit-display').textContent = '-';
+        
+        tbody.appendChild(newRow);
+        attachRowEvents(newRow);
+        hitungSemua();
+    });
+    
+    // Validasi form sebelum submit
+    document.getElementById('purchaseForm').addEventListener('submit', function(e) {
+        let valid = true;
+        let pesanError = [];
+        
+        // Cek supplier
+        if (!document.querySelector('select[name="supplier"]').value) {
+            pesanError.push('Supplier harus dipilih');
+            valid = false;
+        }
+        
+        // Cek setiap item
+        document.querySelectorAll('.item-row').forEach(function(row, index) {
+            const kodeBarang = row.querySelector('select[name="kode_barang_id[]"]').value;
+            const jumlah = parseFloat(row.querySelector('.jumlah').value) || 0;
+            const hargaTotal = parseFloat(row.querySelector('.harga-total').value) || 0;
+            
+            if (!kodeBarang) {
+                pesanError.push(`Item baris ${index+1}: Pilih barang`);
+                valid = false;
+            }
+            
+            if (jumlah <= 0) {
+                pesanError.push(`Item baris ${index+1}: Jumlah harus lebih dari 0`);
+                valid = false;
+            }
+            
+            if (hargaTotal <= 0) {
+                pesanError.push(`Item baris ${index+1}: Harga total harus lebih dari 0`);
+                valid = false;
+            }
+        });
+        
+        if (!valid) {
+            e.preventDefault();
+            alert('Mohon perbaiki kesalahan berikut:\n- ' + pesanError.join('\n- '));
+        }
+    });
+    
+    // Attach events ke baris pertama
+    document.querySelectorAll('.item-row').forEach(attachRowEvents);
+    hitungSemua();
+});
+</script>
+{% endblock %}
